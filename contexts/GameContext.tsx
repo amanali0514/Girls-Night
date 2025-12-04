@@ -1,0 +1,133 @@
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { Category, GameContextType } from '../types/game';
+import { prompts as promptsData } from '../data/prompts';
+
+const GameContext = createContext<GameContextType | undefined>(undefined);
+
+// Derangement shuffle: ensures no player gets their own prompt
+function derange(list: string[]): string[] {
+  const arr = [...list];
+  let attempts = 0;
+  const maxAttempts = 1000;
+
+  while (attempts < maxAttempts) {
+    // Fisher-Yates shuffle
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+
+    // Check if it's a valid derangement
+    const isValid = arr.every((item, index) => item !== list[index]);
+    if (isValid) return arr;
+
+    attempts++;
+  }
+
+  // Fallback: just shuffle if we can't find a valid derangement
+  return arr;
+}
+
+export function GameProvider({ children }: { children: ReactNode }) {
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [prompts, setPrompts] = useState<string[]>([]);
+  const [customPrompts, setCustomPromptsState] = useState<string[]>([]);
+  const [playerCount, setPlayerCount] = useState<number>(0);
+  const [currentPrompt, setCurrentPrompt] = useState<string | null>(null);
+  const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
+  const [totalPrompts, setTotalPrompts] = useState<number>(0);
+  const [promptsUsedCount, setPromptsUsedCount] = useState<number>(0);
+
+  const selectCategory = (category: Category) => {
+    setSelectedCategory(category);
+    
+    if (category === Category.BuildYourOwn) {
+      // Custom prompts will be set separately
+      setPrompts([]);
+      setTotalPrompts(0);
+    } else {
+      const categoryPrompts = promptsData[category as Exclude<Category, Category.BuildYourOwn>];
+      setPrompts(categoryPrompts);
+      setTotalPrompts(categoryPrompts.length);
+    }
+    
+    setUsedIndices(new Set());
+    setPromptsUsedCount(0);
+    setCurrentPrompt(null);
+  };
+
+  const setCustomPrompts = (customPromptsList: string[], count: number) => {
+    // Apply derangement to custom prompts
+    const derangedPrompts = derange(customPromptsList);
+    
+    setCustomPromptsState(customPromptsList);
+    setPlayerCount(count);
+    setPrompts(derangedPrompts);
+    setTotalPrompts(derangedPrompts.length);
+    setUsedIndices(new Set());
+    setPromptsUsedCount(0);
+    setCurrentPrompt(null);
+  };
+
+  const getNextPrompt = (): boolean => {
+    if (prompts.length === 0) return false;
+
+    // Find unused indices
+    const unusedIndices = prompts
+      .map((_, index) => index)
+      .filter((index) => !usedIndices.has(index));
+
+    if (unusedIndices.length === 0) {
+      return false; // No more prompts
+    }
+
+    // Pick a random unused index
+    const randomIndex = unusedIndices[Math.floor(Math.random() * unusedIndices.length)];
+    
+    setCurrentPrompt(prompts[randomIndex]);
+    setUsedIndices(new Set([...usedIndices, randomIndex]));
+    setPromptsUsedCount(promptsUsedCount + 1);
+
+    return true;
+  };
+
+  const resetGame = () => {
+    setSelectedCategory(null);
+    setPrompts([]);
+    setCustomPromptsState([]);
+    setPlayerCount(0);
+    setCurrentPrompt(null);
+    setUsedIndices(new Set());
+    setTotalPrompts(0);
+    setPromptsUsedCount(0);
+  };
+
+  return (
+    <GameContext.Provider
+      value={{
+        selectedCategory,
+        prompts,
+        customPrompts,
+        playerCount,
+        currentPrompt,
+        usedIndices,
+        totalPrompts,
+        promptsUsedCount,
+        selectCategory,
+        setCustomPrompts,
+        getNextPrompt,
+        resetGame,
+      }}
+    >
+      {children}
+    </GameContext.Provider>
+  );
+}
+
+export function useGame(): GameContextType {
+  const context = useContext(GameContext);
+  if (!context) {
+    throw new Error('useGame must be used within GameProvider');
+  }
+  return context;
+}
