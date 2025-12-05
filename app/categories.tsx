@@ -12,7 +12,6 @@ const categories = [
   { id: Category.Dare, name: 'Dare', emoji: '💪', colors: ['#8B5CF6', '#A78BFA'] as const },
   { id: Category.Toxic, name: 'Toxic', emoji: '😈', colors: ['#EF4444', '#F87171'] as const },
   { id: Category.Chill, name: 'Chill', emoji: '✨', colors: ['#3B82F6', '#60A5FA'] as const },
-  { id: Category.BuildYourOwn, name: 'Build Your Own', emoji: '🎨', colors: ['#10B981', '#34D399'] as const },
 ];
 
 export default function CategoriesScreen() {
@@ -25,12 +24,7 @@ export default function CategoriesScreen() {
     }
     
     selectCategory(category);
-
-    if (category === Category.BuildYourOwn) {
-      router.push('/custom-input');
-    } else {
-      router.push('/game');
-    }
+    router.push('/game');
   };
 
   return (

@@ -28,11 +28,13 @@ export interface GameContextType {
   prompts: string[];
   customPrompts: string[];
   playerCount: number;
+  players: string[];
   currentPrompt: string | null;
   usedIndices: Set<number>;
   totalPrompts: number;
   promptsUsedCount: number;
   selectCategory(category: Category): void;
+  setPlayers(names: string[]): void;
   setCustomPrompts(prompts: string[], count: number): void;
   getNextPrompt(): boolean;
   resetGame(): void;

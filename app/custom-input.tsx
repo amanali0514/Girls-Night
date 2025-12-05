@@ -18,16 +18,25 @@ import * as Haptics from 'expo-haptics';
 
 export default function CustomInputScreen() {
   const router = useRouter();
-  const { setCustomPrompts } = useGame();
-  const [playerCount, setPlayerCountState] = useState<string>('');
+  const { setCustomPrompts, players } = useGame();
   const [prompts, setPrompts] = useState<string[]>([]);
-  const [currentStep, setCurrentStep] = useState<'count' | 'prompts'>('count');
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [currentPrompt, setCurrentPrompt] = useState('');
 
-  const handlePlayerCountSubmit = () => {
-    const count = parseInt(playerCount);
-    
-    if (isNaN(count) || count < 2 || count > 10) {
-      Alert.alert('Invalid Number', 'Please enter a number between 2 and 10');
+  // Initialize prompts array when component mounts
+  React.useEffect(() => {
+    if (players.length > 0) {
+      setPrompts(Array(players.length).fill(''));
+    } else {
+      // If no players, redirect back to player setup
+      Alert.alert('Error', 'Please set up players first');
+      router.back();
+    }
+  }, [players.length]);
+
+  const handleNextPlayer = () => {
+    if (currentPrompt.trim().length === 0) {
+      Alert.alert('Empty Prompt', 'Please write a prompt before continuing');
       return;
     }
 
@@ -35,9 +44,24 @@ export default function CustomInputScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    setPrompts(Array(count).fill(''));
-    setCurrentStep('prompts');
+    // Save current prompt
+    const newPrompts = [...prompts];
+    newPrompts[currentPlayerIndex] = currentPrompt.trim();
+    setPrompts(newPrompts);
+    setCurrentPrompt('');
+
+    // Move to next player or start game
+    if (currentPlayerIndex < players.length - 1) {
+      setCurrentPlayerIndex(currentPlayerIndex + 1);
+    } else {
+      // All prompts collected, start game
+      setCustomPrompts(newPrompts, players.length);
+      router.push('/game');
+    }
   };
+
+  const currentPlayer = players[currentPlayerIndex] || 'Player';
+  const isLastPlayer = currentPlayerIndex === players.length - 1;
 
   const handlePromptChange = (index: number, text: string) => {
     const newPrompts = [...prompts];
@@ -61,59 +85,6 @@ export default function CustomInputScreen() {
     router.push('/game');
   };
 
-  if (currentStep === 'count') {
-    return (
-      <View style={styles.container}>
-        <StatusBar style="light" />
-        
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <View style={styles.content}>
-            <Text style={styles.emoji}>🎨</Text>
-            <Text style={styles.title}>Build Your Own</Text>
-            <Text style={styles.subtitle}>How many players?</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Enter number (2-10)"
-              placeholderTextColor="#6B7280"
-              keyboardType="number-pad"
-              value={playerCount}
-              onChangeText={setPlayerCountState}
-              maxLength={2}
-              autoFocus
-            />
-
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handlePlayerCountSubmit}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#10B981', '#34D399']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradient}
-              >
-                <Text style={styles.buttonText}>Next</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -122,56 +93,51 @@ export default function CustomInputScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.title}>Enter Prompts</Text>
+        <View style={styles.content}>
+          <Text style={styles.emoji}>🤫</Text>
+          <Text style={styles.title}>Secret Prompt</Text>
+          <Text style={styles.playerName}>{currentPlayer}'s Turn</Text>
           <Text style={styles.subtitle}>
-            Each player writes a prompt for someone else
+            Write your prompt secretly!{'\n'}
+            Player {currentPlayerIndex + 1} of {players.length}
           </Text>
 
-          <View style={styles.promptsContainer}>
-            {prompts.map((prompt, index) => (
-              <View key={index} style={styles.promptWrapper}>
-                <Text style={styles.promptLabel}>Player {index + 1}</Text>
-                <TextInput
-                  style={styles.promptInput}
-                  placeholder="Type your prompt..."
-                  placeholderTextColor="#6B7280"
-                  value={prompt}
-                  onChangeText={(text) => handlePromptChange(index, text)}
-                  multiline
-                  numberOfLines={3}
-                />
-              </View>
-            ))}
-          </View>
+          <TextInput
+            style={styles.promptInput}
+            placeholder="Write your prompt here..."
+            placeholderTextColor="#6B7280"
+            value={currentPrompt}
+            onChangeText={setCurrentPrompt}
+            multiline
+            numberOfLines={6}
+            autoFocus
+          />
 
           <TouchableOpacity
             style={styles.button}
-            onPress={handleStartGame}
+            onPress={handleNextPlayer}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#10B981', '#34D399']}
+              colors={isLastPlayer ? ['#10B981', '#34D399'] : ['#FF6B9D', '#FEC5E5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.gradient}
             >
-              <Text style={styles.buttonText}>Start Game</Text>
+              <Text style={styles.buttonText}>
+                {isLastPlayer ? 'Start Game 🎉' : 'Next Player →'}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => setCurrentStep('count')}
+            onPress={() => router.back()}
             activeOpacity={0.8}
           >
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -191,11 +157,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
   emoji: {
     fontSize: 64,
     marginBottom: 16,
@@ -207,55 +168,42 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
+  playerName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FF6B9D',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
   subtitle: {
     fontSize: 16,
     color: '#9CA3AF',
     marginBottom: 40,
     textAlign: 'center',
-  },
-  input: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 18,
-    color: '#FFFFFF',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  promptsContainer: {
-    width: '100%',
-    gap: 20,
-    marginBottom: 32,
-  },
-  promptWrapper: {
-    width: '100%',
-  },
-  promptLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    marginBottom: 8,
+    lineHeight: 24,
   },
   promptInput: {
+    width: '100%',
+    maxWidth: 500,
     backgroundColor: '#1F2937',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    borderRadius: 16,
+    padding: 20,
+    fontSize: 18,
     color: '#FFFFFF',
-    minHeight: 80,
+    borderWidth: 2,
+    borderColor: '#374151',
+    minHeight: 150,
     textAlignVertical: 'top',
+    marginBottom: 32,
   },
   button: {
     width: '100%',
     maxWidth: 400,
     overflow: 'hidden',
     borderRadius: 16,
-    marginTop: 'auto',
     ...Platform.select({
       ios: {
-        shadowColor: '#10B981',
+        shadowColor: '#FF6B9D',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -266,8 +214,7 @@ const styles = StyleSheet.create({
     }),
   },
   gradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 32,
+    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -277,8 +224,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   backButton: {
-    alignSelf: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 24,
     marginTop: 16,
   },
