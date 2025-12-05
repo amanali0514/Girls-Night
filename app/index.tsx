@@ -12,7 +12,7 @@ export default function WelcomeScreen() {
       <StatusBar style="light" />
       
       <View style={styles.content}>
-        <Text style={styles.title}>Girls Night</Text>
+        <Text style={styles.title}>Girls Night!</Text>
         <Text style={styles.emoji}>💅✨</Text>
         <Text style={styles.subtitle}>Pass the phone party game</Text>
 
@@ -100,18 +100,18 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 18,
     color: '#9CA3AF',
-    marginBottom: 60,
+    marginBottom: 50,
     textAlign: 'center',
   },
   buttonContainer: {
     width: '100%',
     maxWidth: 400,
-    gap: 16,
+    gap: 20,
   },
   button: {
     width: '100%',
     overflow: 'hidden',
-    borderRadius: 16,
+    borderRadius: 20,
     ...Platform.select({
       ios: {
         shadowColor: '#EC4899',
@@ -125,14 +125,14 @@ const styles = StyleSheet.create({
     }),
   },
   gradient: {
-    paddingVertical: 18,
+    paddingVertical: 24,
     paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   secondaryButton: {
@@ -142,9 +142,9 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: '#8B5CF6',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    paddingVertical: 18,
+    paddingVertical: 24,
     textAlign: 'center',
   },
 });

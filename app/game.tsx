@@ -17,6 +17,16 @@ import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Pastel color palette for cards
+const PASTEL_COLORS: readonly [string, string][] = [
+  ['#FF6B9D', '#FEC5E5'], // Pink
+  ['#A78BFA', '#E9D5FF'], // Purple
+  ['#60A5FA', '#BFDBFE'], // Blue
+  ['#34D399', '#A7F3D0'], // Green
+  ['#FBBF24', '#FDE68A'], // Yellow
+  ['#F472B6', '#FBCFE8'], // Hot Pink
+];
+
 // Flip Card Component
 const FlipCard = ({ item, index, isFlipped, onFlip }: { 
   item: string; 
@@ -55,12 +65,15 @@ const FlipCard = ({ item, index, isFlipped, onFlip }: {
     outputRange: [0, 0, 1],
   });
 
+  // Get colors based on card index
+  const colors = PASTEL_COLORS[index % PASTEL_COLORS.length];
+
   return (
     <View style={styles.cardContainer}>
       <TouchableOpacity
-        style={styles.flipCardContainer}
         onPress={() => onFlip(index)}
-        activeOpacity={0.9}
+        activeOpacity={0.95}
+        style={styles.flipCardContainer}
       >
         {/* Front of card - "Tap to reveal" */}
         <Animated.View
@@ -74,12 +87,12 @@ const FlipCard = ({ item, index, isFlipped, onFlip }: {
           ]}
         >
           <LinearGradient
-            colors={['#1F2937', '#374151']}
+            colors={colors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.tapOverlay}
           >
-            <Text style={styles.tapText}>👆 Tap to reveal</Text>
+            <Text style={styles.tapText}>💕 Tap to reveal 💕</Text>
           </LinearGradient>
         </Animated.View>
 
@@ -120,8 +133,8 @@ export default function GameScreen() {
   const allPrompts = Array.from(usedIndices).map(index => prompts[index]).filter(Boolean);
 
   useEffect(() => {
-    // Load first prompt
-    if (allPrompts.length === 0) {
+    // Load first prompt on mount
+    if (allPrompts.length === 0 && usedIndices.size === 0) {
       getNextPrompt();
     }
   }, []);
@@ -160,7 +173,27 @@ export default function GameScreen() {
     );
   };
 
-  const progress = totalPrompts > 0 ? allPrompts.length / totalPrompts : 0;
+  const handleNext = () => {
+    if (currentIndex < allPrompts.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+    } else if (allPrompts.length < totalPrompts) {
+      // Only load more if we haven't reached total
+      handleLoadMore();
+      // Wait a bit then scroll to the new card
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+      }, 100);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex - 1, animated: true });
+    }
+  };
+
+  // Progress shows current card position, not total loaded
+  const progress = totalPrompts > 0 ? (currentIndex + 1) / totalPrompts : 0;
 
   return (
       <View style={styles.container}>
@@ -181,7 +214,7 @@ export default function GameScreen() {
           <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
         </View>
         <Text style={styles.progressText}>
-          {allPrompts.length} / {totalPrompts}
+          {currentIndex + 1} / {totalPrompts}
         </Text>
       </View>
 
@@ -195,18 +228,61 @@ export default function GameScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         snapToInterval={SCREEN_WIDTH}
-        decelerationRate="fast"
+        decelerationRate={0.9}
+        snapToAlignment="center"
+        scrollEventThrottle={16}
+        removeClippedSubviews={false}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         onMomentumScrollEnd={(event) => {
           const newIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
           setCurrentIndex(newIndex);
           
-          // Load more when reaching the end
-          if (newIndex === allPrompts.length - 1) {
+          // Preload next card when we're one card away from the end
+          if (newIndex >= allPrompts.length - 2 && allPrompts.length < totalPrompts) {
             handleLoadMore();
           }
         }}
         contentContainerStyle={styles.flatListContent}
       />
+
+      {/* Navigation Buttons */}
+      <View style={styles.buttonContainer}>
+        <View style={styles.bottomButtonRow}>
+          <TouchableOpacity
+            style={[styles.navButton, currentIndex === 0 && styles.disabledButton]}
+            onPress={handlePrevious}
+            activeOpacity={0.8}
+            disabled={currentIndex === 0}
+          >
+            <LinearGradient
+              colors={currentIndex === 0 ? ['#374151', '#1F2937'] : ['#374151', '#1F2937']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradient}
+            >
+              <Text style={[styles.buttonText, currentIndex === 0 && styles.disabledText]}>← Previous</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.navButton, currentIndex === allPrompts.length - 1 && allPrompts.length >= totalPrompts && styles.disabledButton]}
+            onPress={handleNext}
+            activeOpacity={0.8}
+            disabled={currentIndex === allPrompts.length - 1 && allPrompts.length >= totalPrompts}
+          >
+            <LinearGradient
+              colors={['#FF6B9D', '#FEC5E5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradient}
+            >
+              <Text style={[styles.buttonText, currentIndex === allPrompts.length - 1 && allPrompts.length >= totalPrompts && styles.disabledText]}>Next →</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
@@ -218,7 +294,7 @@ const styles = StyleSheet.create({
   },
   homeButton: {
     position: 'absolute',
-    top: 60,
+    top: 80,
     left: 20,
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -261,12 +337,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 30,
+    paddingVertical: 20,
   },
   flipCardContainer: {
-    width: '100%',
+    width: '90%',
+    height: '85%',
     maxWidth: 500,
-    aspectRatio: 1,
+    maxHeight: 600,
   },
   cardFace: {
     position: 'absolute',
@@ -293,7 +371,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tapText: {
-    fontSize: 32,
+    fontSize: 38,
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
@@ -304,10 +382,48 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   promptText: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 36,
+    lineHeight: 48,
+  },
+  buttonContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  bottomButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  navButton: {
+    flex: 1,
+    overflow: 'hidden',
+    borderRadius: 16,
+    shadowColor: '#FF6B9D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  fullWidth: {
+    flex: 1,
+  },
+  gradient: {
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  disabledText: {
+    opacity: 0.6,
   },
 });

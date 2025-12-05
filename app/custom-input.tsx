@@ -20,6 +20,8 @@ export default function CustomInputScreen() {
   const router = useRouter();
   const { setCustomPrompts, players } = useGame();
   const [prompts, setPrompts] = useState<string[]>([]);
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [currentPrompt, setCurrentPrompt] = useState('');
 
   // Initialize prompts array when component mounts
   React.useEffect(() => {
@@ -31,6 +33,35 @@ export default function CustomInputScreen() {
       router.back();
     }
   }, [players.length]);
+
+  const handleNextPlayer = () => {
+    if (currentPrompt.trim().length === 0) {
+      Alert.alert('Empty Prompt', 'Please write a prompt before continuing');
+      return;
+    }
+
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    // Save current prompt
+    const newPrompts = [...prompts];
+    newPrompts[currentPlayerIndex] = currentPrompt.trim();
+    setPrompts(newPrompts);
+    setCurrentPrompt('');
+
+    // Move to next player or start game
+    if (currentPlayerIndex < players.length - 1) {
+      setCurrentPlayerIndex(currentPlayerIndex + 1);
+    } else {
+      // All prompts collected, start game
+      setCustomPrompts(newPrompts, players.length);
+      router.push('/game');
+    }
+  };
+
+  const currentPlayer = players[currentPlayerIndex] || 'Player';
+  const isLastPlayer = currentPlayerIndex === players.length - 1;
 
   const handlePromptChange = (index: number, text: string) => {
     const newPrompts = [...prompts];
@@ -62,45 +93,40 @@ export default function CustomInputScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.title}>Build Your Own</Text>
+        <View style={styles.content}>
+          <Text style={styles.emoji}>🤫</Text>
+          <Text style={styles.title}>Secret Prompt</Text>
+          <Text style={styles.playerName}>{currentPlayer}'s Turn</Text>
           <Text style={styles.subtitle}>
-            Each player writes a prompt for someone else
+            Write your prompt secretly!{'\n'}
+            Player {currentPlayerIndex + 1} of {players.length}
           </Text>
 
-          <View style={styles.promptsContainer}>
-            {prompts.map((prompt: string, index: number) => (
-              <View key={index} style={styles.promptWrapper}>
-                <Text style={styles.promptLabel}>{players[index]}</Text>
-                <TextInput
-                  style={styles.promptInput}
-                  placeholder={`${players[index]}, write your prompt...`}
-                  placeholderTextColor="#6B7280"
-                  value={prompt}
-                  onChangeText={(text: string) => handlePromptChange(index, text)}
-                  multiline
-                  numberOfLines={3}
-                />
-              </View>
-            ))}
-          </View>
+          <TextInput
+            style={styles.promptInput}
+            placeholder="Write your prompt here..."
+            placeholderTextColor="#6B7280"
+            value={currentPrompt}
+            onChangeText={setCurrentPrompt}
+            multiline
+            numberOfLines={6}
+            autoFocus
+          />
 
           <TouchableOpacity
             style={styles.button}
-            onPress={handleStartGame}
+            onPress={handleNextPlayer}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#10B981', '#34D399']}
+              colors={isLastPlayer ? ['#10B981', '#34D399'] : ['#FF6B9D', '#FEC5E5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.gradient}
             >
-              <Text style={styles.buttonText}>Start Game</Text>
+              <Text style={styles.buttonText}>
+                {isLastPlayer ? 'Start Game 🎉' : 'Next Player →'}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -111,7 +137,7 @@ export default function CustomInputScreen() {
           >
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -125,10 +151,15 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
+  },
+  emoji: {
+    fontSize: 64,
+    marginBottom: 16,
   },
   title: {
     fontSize: 32,
@@ -137,44 +168,42 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
+  playerName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FF6B9D',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
   subtitle: {
     fontSize: 16,
     color: '#9CA3AF',
     marginBottom: 40,
     textAlign: 'center',
-  },
-  promptsContainer: {
-    width: '100%',
-    gap: 20,
-    marginBottom: 32,
-  },
-  promptWrapper: {
-    width: '100%',
-  },
-  promptLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    marginBottom: 8,
+    lineHeight: 24,
   },
   promptInput: {
+    width: '100%',
+    maxWidth: 500,
     backgroundColor: '#1F2937',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    borderRadius: 16,
+    padding: 20,
+    fontSize: 18,
     color: '#FFFFFF',
-    minHeight: 80,
+    borderWidth: 2,
+    borderColor: '#374151',
+    minHeight: 150,
     textAlignVertical: 'top',
+    marginBottom: 32,
   },
   button: {
     width: '100%',
     maxWidth: 400,
     overflow: 'hidden',
     borderRadius: 16,
-    marginTop: 'auto',
     ...Platform.select({
       ios: {
-        shadowColor: '#10B981',
+        shadowColor: '#FF6B9D',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -185,8 +214,7 @@ const styles = StyleSheet.create({
     }),
   },
   gradient: {
-    paddingVertical: 18,
-    paddingHorizontal: 32,
+    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -196,8 +224,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   backButton: {
-    alignSelf: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 24,
     marginTop: 16,
   },

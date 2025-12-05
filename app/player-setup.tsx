@@ -35,7 +35,9 @@ export default function PlayerSetupScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    setPlayerNames(Array(count).fill(''));
+    // Initialize with default names: Player 1, Player 2, etc.
+    const defaultNames = Array.from({ length: count }, (_, i) => `Player ${i + 1}`);
+    setPlayerNames(defaultNames);
     setCurrentStep('names');
   };
 
@@ -46,25 +48,15 @@ export default function PlayerSetupScreen() {
   };
 
   const handleContinue = () => {
-    const filledNames = playerNames.filter((name: string) => name.trim().length > 0);
-    
-    if (filledNames.length < playerNames.length) {
-      Alert.alert('Incomplete Names', 'Please fill in all player names before continuing');
-      return;
-    }
-
-    // Check for duplicate names
-    const uniqueNames = new Set(filledNames.map((name: string) => name.trim().toLowerCase()));
-    if (uniqueNames.size !== filledNames.length) {
-      Alert.alert('Duplicate Names', 'Please use unique names for each player');
-      return;
-    }
+    // All names are pre-filled with defaults, so no validation needed
+    // Just trim any whitespace from manually edited names
+    const finalNames = playerNames.map((name: string) => name.trim());
 
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
 
-    setPlayers(filledNames.map((name: string) => name.trim()));
+    setPlayers(finalNames);
     router.push('/custom-input');
   };
 
@@ -134,18 +126,17 @@ export default function PlayerSetupScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Enter Names</Text>
+          <Text style={styles.title}>Player Names</Text>
           <Text style={styles.subtitle}>
-            So we know who's playing!
+            Tap any player to edit their name (optional)
           </Text>
 
           <View style={styles.namesContainer}>
             {playerNames.map((name: string, index: number) => (
               <View key={index} style={styles.nameWrapper}>
-                <Text style={styles.nameLabel}>Player {index + 1}</Text>
                 <TextInput
                   style={styles.nameInput}
-                  placeholder="Enter name..."
+                  placeholder={`Player ${index + 1}`}
                   placeholderTextColor="#6B7280"
                   value={name}
                   onChangeText={(text: string) => handleNameChange(index, text)}
@@ -240,20 +231,16 @@ const styles = StyleSheet.create({
   nameWrapper: {
     width: '100%',
   },
-  nameLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 8,
-    fontWeight: '600',
-  },
   nameInput: {
     backgroundColor: '#1F2937',
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: 18,
+    fontSize: 18,
     color: '#FFFFFF',
     borderWidth: 2,
     borderColor: '#374151',
+    textAlign: 'center',
+    fontWeight: '600',
   },
   button: {
     width: '100%',
