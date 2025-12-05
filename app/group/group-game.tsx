@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 
 export default function GroupGameScreen() {
   const router = useRouter();
-  const { prompts, currentPromptIndex, isHost, nextPrompt, previousPrompt, leaveRoom } = useGroup();
+  const { prompts, currentPromptIndex, isHost, nextPrompt, previousPrompt, leaveRoom, roomId } = useGroup();
   const [revealed, setRevealed] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -25,6 +25,14 @@ export default function GroupGameScreen() {
   const isLastPrompt = currentPromptIndex >= prompts.length - 1;
   const isFirstPrompt = currentPromptIndex === 0;
   const progress = prompts.length > 0 ? (currentPromptIndex + 1) / prompts.length : 0;
+
+  // Handle room deletion (when host ends game)
+  useEffect(() => {
+    if (!roomId && !isHost) {
+      // Room was deleted by host, navigate to end screen
+      router.replace('/end');
+    }
+  }, [roomId, isHost]);
 
   useEffect(() => {
     if (revealed || Platform.OS === 'web') {
@@ -182,10 +190,6 @@ export default function GroupGameScreen() {
 
       {/* Prompt Area */}
       <View style={styles.promptContainer}>
-        {Platform.OS !== 'web' && !revealed && (
-          <Text style={styles.instruction}>💕 Tap to reveal 💕</Text>
-        )}
-
         <TouchableOpacity
           activeOpacity={0.95}
           onPress={handleFlipCard}
@@ -276,7 +280,7 @@ export default function GroupGameScreen() {
           </>
         ) : (
           <View style={styles.waitingContainer}>
-            <Text style={styles.waitingText}>Waiting for host...</Text>
+            <Text style={styles.waitingText}>Host is in control</Text>
           </View>
         )}
       </View>

@@ -41,6 +41,12 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         table: 'rooms',
         filter: `id=eq.${roomId}`,
       }, (payload) => {
+        // Handle room deletion (when host ends game)
+        if (payload.eventType === 'DELETE') {
+          resetGroup();
+          return;
+        }
+
         if (payload.new && typeof payload.new === 'object') {
           const room = payload.new as unknown as {
             players: Player[];
