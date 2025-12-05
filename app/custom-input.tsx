@@ -18,26 +18,19 @@ import * as Haptics from 'expo-haptics';
 
 export default function CustomInputScreen() {
   const router = useRouter();
-  const { setCustomPrompts } = useGame();
-  const [playerCount, setPlayerCountState] = useState<string>('');
+  const { setCustomPrompts, players } = useGame();
   const [prompts, setPrompts] = useState<string[]>([]);
-  const [currentStep, setCurrentStep] = useState<'count' | 'prompts'>('count');
 
-  const handlePlayerCountSubmit = () => {
-    const count = parseInt(playerCount);
-    
-    if (isNaN(count) || count < 2 || count > 10) {
-      Alert.alert('Invalid Number', 'Please enter a number between 2 and 10');
-      return;
+  // Initialize prompts array when component mounts
+  React.useEffect(() => {
+    if (players.length > 0) {
+      setPrompts(Array(players.length).fill(''));
+    } else {
+      // If no players, redirect back to player setup
+      Alert.alert('Error', 'Please set up players first');
+      router.back();
     }
-
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    setPrompts(Array(count).fill(''));
-    setCurrentStep('prompts');
-  };
+  }, [players.length]);
 
   const handlePromptChange = (index: number, text: string) => {
     const newPrompts = [...prompts];
@@ -61,59 +54,6 @@ export default function CustomInputScreen() {
     router.push('/game');
   };
 
-  if (currentStep === 'count') {
-    return (
-      <View style={styles.container}>
-        <StatusBar style="light" />
-        
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <View style={styles.content}>
-            <Text style={styles.emoji}>🎨</Text>
-            <Text style={styles.title}>Build Your Own</Text>
-            <Text style={styles.subtitle}>How many players?</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Enter number (2-10)"
-              placeholderTextColor="#6B7280"
-              keyboardType="number-pad"
-              value={playerCount}
-              onChangeText={setPlayerCountState}
-              maxLength={2}
-              autoFocus
-            />
-
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handlePlayerCountSubmit}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#10B981', '#34D399']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradient}
-              >
-                <Text style={styles.buttonText}>Next</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -127,21 +67,21 @@ export default function CustomInputScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Enter Prompts</Text>
+          <Text style={styles.title}>Build Your Own</Text>
           <Text style={styles.subtitle}>
             Each player writes a prompt for someone else
           </Text>
 
           <View style={styles.promptsContainer}>
-            {prompts.map((prompt, index) => (
+            {prompts.map((prompt: string, index: number) => (
               <View key={index} style={styles.promptWrapper}>
-                <Text style={styles.promptLabel}>Player {index + 1}</Text>
+                <Text style={styles.promptLabel}>{players[index]}</Text>
                 <TextInput
                   style={styles.promptInput}
-                  placeholder="Type your prompt..."
+                  placeholder={`${players[index]}, write your prompt...`}
                   placeholderTextColor="#6B7280"
                   value={prompt}
-                  onChangeText={(text) => handlePromptChange(index, text)}
+                  onChangeText={(text: string) => handlePromptChange(index, text)}
                   multiline
                   numberOfLines={3}
                 />
@@ -166,7 +106,7 @@ export default function CustomInputScreen() {
 
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => setCurrentStep('count')}
+            onPress={() => router.back()}
             activeOpacity={0.8}
           >
             <Text style={styles.backButtonText}>← Back</Text>
@@ -185,20 +125,10 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
   scrollContent: {
     padding: 20,
     paddingTop: 60,
     paddingBottom: 40,
-  },
-  emoji: {
-    fontSize: 64,
-    marginBottom: 16,
   },
   title: {
     fontSize: 32,
@@ -211,17 +141,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#9CA3AF',
     marginBottom: 40,
-    textAlign: 'center',
-  },
-  input: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 18,
-    color: '#FFFFFF',
-    marginBottom: 24,
     textAlign: 'center',
   },
   promptsContainer: {

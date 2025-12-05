@@ -33,10 +33,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [prompts, setPrompts] = useState<string[]>([]);
   const [customPrompts, setCustomPromptsState] = useState<string[]>([]);
   const [playerCount, setPlayerCount] = useState<number>(0);
+  const [players, setPlayersState] = useState<string[]>([]);
   const [currentPrompt, setCurrentPrompt] = useState<string | null>(null);
   const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
   const [totalPrompts, setTotalPrompts] = useState<number>(0);
   const [promptsUsedCount, setPromptsUsedCount] = useState<number>(0);
+
+  const setPlayers = (names: string[]) => {
+    setPlayersState(names);
+    setPlayerCount(names.length);
+  };
 
   const selectCategory = (category: Category) => {
     setSelectedCategory(category);
@@ -96,6 +102,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setPrompts([]);
     setCustomPromptsState([]);
     setPlayerCount(0);
+    setPlayersState([]);
     setCurrentPrompt(null);
     setUsedIndices(new Set());
     setTotalPrompts(0);
@@ -109,11 +116,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         prompts,
         customPrompts,
         playerCount,
+        players,
         currentPrompt,
         usedIndices,
         totalPrompts,
         promptsUsedCount,
         selectCategory,
+        setPlayers,
         setCustomPrompts,
         getNextPrompt,
         resetGame,

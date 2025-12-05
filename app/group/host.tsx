@@ -21,6 +21,7 @@ const categories = [
   { id: Category.Dare, name: 'Dare', emoji: '💪', colors: ['#8B5CF6', '#A78BFA'] as const },
   { id: Category.Toxic, name: 'Toxic', emoji: '😈', colors: ['#EF4444', '#F87171'] as const },
   { id: Category.Chill, name: 'Chill', emoji: '✨', colors: ['#3B82F6', '#60A5FA'] as const },
+  { id: Category.BuildYourOwn, name: 'Build Your Own', emoji: '🎨', colors: ['#10B981', '#34D399'] as const },
 ];
 
 export default function HostScreen() {
@@ -31,6 +32,21 @@ export default function HostScreen() {
   const handleCategorySelect = async (category: Category) => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    if (category === Category.BuildYourOwn) {
+      // For Build Your Own, we need to create the room first, then go to custom input
+      setLoading(true);
+      try {
+        const roomCode = await createRoom(category);
+        router.push('/group/custom-prompts');
+      } catch (error) {
+        Alert.alert('Error', 'Failed to create room. Please try again.');
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+      return;
     }
 
     setLoading(true);
