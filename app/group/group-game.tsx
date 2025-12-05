@@ -16,14 +16,14 @@ import * as Haptics from 'expo-haptics';
 
 export default function GroupGameScreen() {
   const router = useRouter();
-  const { prompts, currentPromptIndex, isHost, nextPrompt, leaveRoom } = useGroup();
+  const { prompts, currentPromptIndex, isHost, nextPrompt, previousPrompt, leaveRoom } = useGroup();
   const [revealed, setRevealed] = useState(false);
-  const [isHolding, setIsHolding] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
   const currentPrompt = prompts[currentPromptIndex];
   const isLastPrompt = currentPromptIndex >= prompts.length - 1;
+  const isFirstPrompt = currentPromptIndex === 0;
   const progress = prompts.length > 0 ? (currentPromptIndex + 1) / prompts.length : 0;
 
   useEffect(() => {
@@ -57,6 +57,11 @@ export default function GroupGameScreen() {
     }
   }, [revealed]);
 
+  // Reset revealed state when prompt changes
+  useEffect(() => {
+    setRevealed(false);
+  }, [currentPromptIndex]);
+
   // Auto-reveal on web
   useEffect(() => {
     if (Platform.OS === 'web' && currentPrompt) {
@@ -64,42 +69,79 @@ export default function GroupGameScreen() {
     }
   }, [currentPrompt]);
 
-  const handlePressIn = () => {
-    if (Platform.OS === 'web') return;
-    setIsHolding(true);
-    setRevealed(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handleFlipCard = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setRevealed(!revealed);
   };
 
-  const handlePressOut = () => {
-    if (Platform.OS === 'web') return;
-    setIsHolding(false);
-    setRevealed(false);
-  };
-
-  const handleNextPrompt = async () => {
+  const handlePreviousPrompt = async () => {
     if (!isHost) {
-      Alert.alert('Host Only', 'Only the host can move to the next prompt');
+      Alert.alert('Host Only', 'Only the host can navigate prompts');
       return;
     }
+
+    if (isFirstPrompt) return;
 
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    if (isLastPrompt) {
-      // End game
-      await handleEndGame();
-    } else {
-      setRevealed(false);
-      setIsHolding(false);
-      await nextPrompt();
+    setRevealed(false);
+    await previousPrompt();
+  };
+
+  const handleNextPrompt = async () => {
+    if (!isHost) {
+      Alert.alert('Host Only', 'Only the host can navigate prompts');
+      return;
     }
+
+    if (isLastPrompt) return;
+
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    setRevealed(false);
+    await nextPrompt();
   };
 
   const handleEndGame = async () => {
-    await leaveRoom();
-    router.replace('/end');
+    Alert.alert(
+      'End Game',
+      'Are you sure you want to end the game? This will end it for everyone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'End Game',
+          style: 'destructive',
+          onPress: async () => {
+            await leaveRoom();
+            router.replace('/end');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBack = () => {
+    Alert.alert(
+      'Leave Game',
+      'Go back to category selection? This will end the game for everyone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Go Back',
+          style: 'default',
+          onPress: async () => {
+            await leaveRoom();
+            router.back();
+          },
+        },
+      ]
+    );
   };
 
   if (!currentPrompt) {
@@ -117,6 +159,17 @@ export default function GroupGameScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
 
+      {/* Back Button - Top Left (Host Only) */}
+      {isHost && (
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBackground}>
@@ -130,13 +183,12 @@ export default function GroupGameScreen() {
       {/* Prompt Area */}
       <View style={styles.promptContainer}>
         {Platform.OS !== 'web' && !revealed && (
-          <Text style={styles.instruction}>Hold to reveal 👇</Text>
+          <Text style={styles.instruction}>💕 Tap to reveal 💕</Text>
         )}
 
         <TouchableOpacity
-          activeOpacity={1}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
+          activeOpacity={0.95}
+          onPress={handleFlipCard}
           style={styles.promptTouchArea}
         >
           <Animated.View
@@ -158,34 +210,70 @@ export default function GroupGameScreen() {
             </LinearGradient>
           </Animated.View>
 
-          {/* Overlay for hold-to-reveal */}
+          {/* Overlay for tap-to-reveal */}
           {Platform.OS !== 'web' && !revealed && (
             <View style={styles.overlay}>
-              <Text style={styles.overlayText}>👆 Hold</Text>
+              <Text style={styles.overlayText}>💕 Tap 💕</Text>
             </View>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Next Button (Host Only) */}
+      {/* Navigation Buttons */}
       <View style={styles.buttonContainer}>
         {isHost ? (
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleNextPrompt}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#8B5CF6', '#EC4899']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gradient}
+          <>
+            {/* End Game Button - Red */}
+            <TouchableOpacity
+              style={styles.endGameButton}
+              onPress={handleEndGame}
+              activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>
-                {isLastPrompt ? 'End Game 👑' : 'Next Prompt →'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={['#DC2626', '#EF4444']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradient}
+              >
+                <Text style={styles.buttonText}>End Game</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Previous and Next Buttons */}
+            <View style={styles.bottomButtonRow}>
+              <TouchableOpacity
+                style={[styles.navButton, isFirstPrompt && styles.disabledButton]}
+                onPress={handlePreviousPrompt}
+                activeOpacity={0.8}
+                disabled={isFirstPrompt}
+              >
+                <LinearGradient
+                  colors={isFirstPrompt ? ['#374151', '#1F2937'] : ['#374151', '#1F2937']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradient}
+                >
+                  <Text style={[styles.buttonText, isFirstPrompt && styles.disabledText]}>← Previous</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.navButton, isLastPrompt && styles.disabledButton]}
+                onPress={handleNextPrompt}
+                activeOpacity={0.8}
+                disabled={isLastPrompt}
+              >
+                <LinearGradient
+                  colors={['#FF6B9D', '#FEC5E5']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradient}
+                >
+                  <Text style={[styles.buttonText, isLastPrompt && styles.disabledText]}>Next →</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </>
         ) : (
           <View style={styles.waitingContainer}>
             <Text style={styles.waitingText}>Waiting for host...</Text>
@@ -209,6 +297,19 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#9CA3AF',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 80,
+    left: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#EC4899',
+    fontWeight: '600',
   },
   progressContainer: {
     paddingHorizontal: 20,
@@ -297,13 +398,14 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  button: {
+  endGameButton: {
     width: '100%',
     overflow: 'hidden',
     borderRadius: 16,
+    marginBottom: 12,
     ...Platform.select({
       ios: {
-        shadowColor: '#8B5CF6',
+        shadowColor: '#DC2626',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -312,6 +414,29 @@ const styles = StyleSheet.create({
         elevation: 8,
       },
     }),
+  },
+  bottomButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  navButton: {
+    flex: 1,
+    overflow: 'hidden',
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   gradient: {
     paddingVertical: 18,
@@ -323,6 +448,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  disabledText: {
+    color: '#6B7280',
   },
   waitingContainer: {
     paddingVertical: 18,

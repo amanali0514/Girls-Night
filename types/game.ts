@@ -53,6 +53,7 @@ export interface GroupContextType {
   joinRoom(code: string, playerName: string): Promise<void>;
   startGame(): Promise<void>;
   nextPrompt(): Promise<void>;
+  previousPrompt(): Promise<void>;
   leaveRoom(): Promise<void>;
   resetGroup(): void;
 }

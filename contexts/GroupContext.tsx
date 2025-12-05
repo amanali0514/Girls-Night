@@ -190,6 +190,26 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const previousPrompt = async (): Promise<void> => {
+    if (!isHost || !roomId || currentPromptIndex === 0) return;
+
+    try {
+      const newIndex = currentPromptIndex - 1;
+
+      const { error } = await supabase
+        .from('rooms')
+        .update({ current_prompt_index: newIndex })
+        .eq('id', roomId);
+
+      if (error) throw error;
+
+      setCurrentPromptIndex(newIndex);
+    } catch (error) {
+      console.error('Error moving to previous prompt:', error);
+      throw error;
+    }
+  };
+
   const leaveRoom = async (): Promise<void> => {
     if (!roomId) return;
 
@@ -258,6 +278,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         joinRoom,
         startGame,
         nextPrompt,
+        previousPrompt,
         leaveRoom,
         resetGroup,
       }}
