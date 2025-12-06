@@ -34,21 +34,6 @@ export default function HostScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    if (category === Category.BuildYourOwn) {
-      // For Build Your Own, we need to create the room first, then go to custom input
-      setLoading(true);
-      try {
-        const roomCode = await createRoom(category);
-        router.push('/group/custom-prompts');
-      } catch (error) {
-        Alert.alert('Error', 'Failed to create room. Please try again.');
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
     setLoading(true);
 
     try {
