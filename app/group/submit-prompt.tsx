@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useGroup } from '../../contexts/GroupContext';
+import { supabase } from '../../utils/supabase';
 import * as Haptics from 'expo-haptics';
 
 const TIMER_DURATION = 25; // 25 seconds
@@ -87,9 +88,6 @@ export default function SubmitPromptScreen() {
           const firstPlayerId = players[randomIndex].id;
 
           // Update the room with the custom prompts and first player
-          const { data: supabaseData } = await import('../../utils/supabase');
-          const { supabase } = supabaseData;
-          
           await supabase
             .from('rooms')
             .update({ 
