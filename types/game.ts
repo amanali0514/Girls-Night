@@ -10,6 +10,8 @@ export interface Player {
   id: string;
   name: string;
   joinedAt: number;
+  prompt?: string;
+  promptSubmitted?: boolean;
 }
 
 export interface Room {
@@ -21,6 +23,9 @@ export interface Room {
   prompts: string[];
   started: boolean;
   createdAt: number;
+  activePlayerId?: string | null;
+  promptSubmissionPhase?: boolean;
+  gameFinished?: boolean;
 }
 
 export interface GameContextType {
@@ -49,6 +54,10 @@ export interface GroupContextType {
   currentPromptIndex: number;
   prompts: string[];
   started: boolean;
+  activePlayerId: string | null;
+  promptSubmissionPhase: boolean;
+  gameFinished: boolean;
+  myPlayerId: string;
   createRoom(category: Category): Promise<string>;
   joinRoom(code: string, playerName: string): Promise<void>;
   startGame(): Promise<void>;
@@ -56,4 +65,9 @@ export interface GroupContextType {
   previousPrompt(): Promise<void>;
   leaveRoom(): Promise<void>;
   resetGroup(): void;
+  submitPrompt(prompt: string): Promise<void>;
+  setNextPlayer(nextPlayerId: string): Promise<void>;
+  changeCategory(newCategory: Category): Promise<void>;
+  playAgain(): Promise<void>;
+  finishGame(): Promise<void>;
 }

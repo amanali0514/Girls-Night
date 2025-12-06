@@ -16,13 +16,19 @@ import * as Haptics from 'expo-haptics';
 
 export default function LobbyScreen() {
   const router = useRouter();
-  const { roomId, players, isHost, started, startGame, leaveRoom } = useGroup();
+  const { roomId, players, isHost, started, startGame, leaveRoom, promptSubmissionPhase } = useGroup();
 
   useEffect(() => {
     if (started) {
-      router.replace('/group/group-game');
+      // If in prompt submission phase, go to submit-prompt screen
+      // Otherwise go to game screen
+      if (promptSubmissionPhase) {
+        router.replace('/group/submit-prompt');
+      } else {
+        router.replace('/group/group-game');
+      }
     }
-  }, [started]);
+  }, [started, promptSubmissionPhase]);
 
   const handleStartGame = async () => {
     if (!isHost) return;

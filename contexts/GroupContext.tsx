@@ -27,6 +27,9 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   const [started, setStarted] = useState<boolean>(false);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
   const [myPlayerId] = useState<string>(() => Math.random().toString(36).substring(7));
+  const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
+  const [promptSubmissionPhase, setPromptSubmissionPhase] = useState<boolean>(false);
+  const [gameFinished, setGameFinished] = useState<boolean>(false);
 
   // Subscribe to room updates
   useEffect(() => {
@@ -54,11 +57,17 @@ export function GroupProvider({ children }: { children: ReactNode }) {
             current_prompt_index: number;
             category: Category;
             prompts: string[];
+            active_player_id: string | null;
+            prompt_submission_phase: boolean;
+            game_finished: boolean;
           };
           
           setPlayers(room.players || []);
           setStarted(room.started || false);
           setCurrentPromptIndex(room.current_prompt_index || 0);
+          setActivePlayerId(room.active_player_id || null);
+          setPromptSubmissionPhase(room.prompt_submission_phase || false);
+          setGameFinished(room.game_finished || false);
           
           if (room.category) setCategory(room.category);
           if (room.prompts) setPrompts(room.prompts);
@@ -162,14 +171,36 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     if (!isHost || !roomId) return;
 
     try {
+      // Get current room data
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (!room) throw new Error('Room not found');
+
+      const updates: any = { started: true };
+
+      // If Build Your Own and prompts aren't set yet, enter submission phase
+      if (room.category === Category.BuildYourOwn && (!room.prompts || room.prompts.length === 0)) {
+        updates.prompt_submission_phase = true;
+      } else {
+        // For other modes, set random first player
+        const randomIndex = Math.floor(Math.random() * (room.players as Player[]).length);
+        updates.active_player_id = (room.players as Player[])[randomIndex].id;
+      }
+
       const { error } = await supabase
         .from('rooms')
-        .update({ started: true })
+        .update(updates)
         .eq('id', roomId);
 
       if (error) throw error;
 
       setStarted(true);
+      if (updates.active_player_id) setActivePlayerId(updates.active_player_id);
+      if (updates.prompt_submission_phase) setPromptSubmissionPhase(true);
     } catch (error) {
       console.error('Error starting game:', error);
       throw error;
@@ -267,6 +298,147 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     setCurrentPromptIndex(0);
     setPrompts([]);
     setStarted(false);
+    setActivePlayerId(null);
+    setPromptSubmissionPhase(false);
+    setGameFinished(false);
+  };
+
+  const submitPrompt = async (prompt: string): Promise<void> => {
+    if (!roomId) return;
+
+    try {
+      // Get current room data
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('players')
+        .eq('id', roomId)
+        .single();
+
+      if (!room) throw new Error('Room not found');
+
+      // Update player's prompt
+      const updatedPlayers = (room.players as Player[]).map(p =>
+        p.id === myPlayerId
+          ? { ...p, prompt, promptSubmitted: true }
+          : p
+      );
+
+      await supabase
+        .from('rooms')
+        .update({ players: updatedPlayers })
+        .eq('id', roomId);
+
+    } catch (error) {
+      console.error('Error submitting prompt:', error);
+      throw error;
+    }
+  };
+
+  const setNextPlayer = async (nextPlayerId: string): Promise<void> => {
+    if (!roomId) return;
+
+    try {
+      await supabase
+        .from('rooms')
+        .update({ active_player_id: nextPlayerId })
+        .eq('id', roomId);
+
+      setActivePlayerId(nextPlayerId);
+    } catch (error) {
+      console.error('Error setting next player:', error);
+      throw error;
+    }
+  };
+
+  const changeCategory = async (newCategory: Category): Promise<void> => {
+    if (!isHost || !roomId) return;
+
+    try {
+      const categoryPrompts = newCategory === Category.BuildYourOwn 
+        ? [] 
+        : promptsData[newCategory as Exclude<Category, Category.BuildYourOwn>];
+
+      await supabase
+        .from('rooms')
+        .update({ 
+          category: newCategory,
+          prompts: categoryPrompts,
+          current_prompt_index: 0
+        })
+        .eq('id', roomId);
+
+      setCategory(newCategory);
+      setPrompts(categoryPrompts);
+      setCurrentPromptIndex(0);
+    } catch (error) {
+      console.error('Error changing category:', error);
+      throw error;
+    }
+  };
+
+  const playAgain = async (): Promise<void> => {
+    if (!isHost || !roomId) return;
+
+    try {
+      // Get current room data
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (!room) throw new Error('Room not found');
+
+      // Reset players' prompts
+      const resetPlayers = (room.players as Player[]).map(p => ({
+        ...p,
+        prompt: undefined,
+        promptSubmitted: false
+      }));
+
+      const updates: any = {
+        players: resetPlayers,
+        current_prompt_index: 0,
+        started: false,
+        active_player_id: null,
+        game_finished: false
+      };
+
+      // If Build Your Own, enter prompt submission phase
+      if (room.category === Category.BuildYourOwn) {
+        updates.prompts = [];
+        updates.prompt_submission_phase = true;
+      }
+
+      await supabase
+        .from('rooms')
+        .update(updates)
+        .eq('id', roomId);
+
+      setCurrentPromptIndex(0);
+      setStarted(false);
+      setActivePlayerId(null);
+      setGameFinished(false);
+    } catch (error) {
+      console.error('Error playing again:', error);
+      throw error;
+    }
+  };
+
+  const finishGame = async (): Promise<void> => {
+    if (!roomId) return;
+
+    try {
+      await supabase
+        .from('rooms')
+        .update({ game_finished: true })
+        .eq('id', roomId);
+
+      setGameFinished(true);
+    } catch (error) {
+      console.error('Error finishing game:', error);
+      throw error;
+    }
   };
 
   return (
@@ -280,6 +452,10 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         currentPromptIndex,
         prompts,
         started,
+        activePlayerId,
+        promptSubmissionPhase,
+        gameFinished,
+        myPlayerId,
         createRoom,
         joinRoom,
         startGame,
@@ -287,6 +463,11 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         previousPrompt,
         leaveRoom,
         resetGroup,
+        submitPrompt,
+        setNextPlayer,
+        changeCategory,
+        playAgain,
+        finishGame,
       }}
     >
       {children}

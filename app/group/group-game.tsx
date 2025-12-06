@@ -16,7 +16,21 @@ import * as Haptics from 'expo-haptics';
 
 export default function GroupGameScreen() {
   const router = useRouter();
-  const { prompts, currentPromptIndex, isHost, nextPrompt, previousPrompt, leaveRoom, roomId } = useGroup();
+  const { 
+    prompts, 
+    currentPromptIndex, 
+    isHost, 
+    nextPrompt, 
+    previousPrompt, 
+    leaveRoom, 
+    roomId,
+    activePlayerId,
+    myPlayerId,
+    players,
+    setNextPlayer,
+    gameFinished,
+    finishGame,
+  } = useGroup();
   const [revealed, setRevealed] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -25,6 +39,8 @@ export default function GroupGameScreen() {
   const isLastPrompt = currentPromptIndex >= prompts.length - 1;
   const isFirstPrompt = currentPromptIndex === 0;
   const progress = prompts.length > 0 ? (currentPromptIndex + 1) / prompts.length : 0;
+  const isMyTurn = activePlayerId === myPlayerId;
+  const activePlayer = players.find(p => p.id === activePlayerId);
 
   // Handle room deletion (when host ends game)
   useEffect(() => {
@@ -33,6 +49,13 @@ export default function GroupGameScreen() {
       router.replace('/end');
     }
   }, [roomId, isHost]);
+
+  // Handle game finished (navigate all players to end screen)
+  useEffect(() => {
+    if (gameFinished) {
+      router.replace('/group/group-end');
+    }
+  }, [gameFinished]);
 
   useEffect(() => {
     if (revealed || Platform.OS === 'web') {
@@ -78,42 +101,52 @@ export default function GroupGameScreen() {
   }, [currentPrompt]);
 
   const handleFlipCard = () => {
+    // Only the active player can flip
+    if (!isMyTurn) {
+      Alert.alert('Not Your Turn', `It's ${activePlayer?.name || 'another player'}'s turn!`);
+      return;
+    }
+
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     setRevealed(!revealed);
   };
 
-  const handlePreviousPrompt = async () => {
-    if (!isHost) {
-      Alert.alert('Host Only', 'Only the host can navigate prompts');
+  const handleNextPlayer = async () => {
+    if (!isMyTurn) {
+      Alert.alert('Not Your Turn', `Only the active player can select the next person!`);
       return;
     }
 
-    if (isFirstPrompt) return;
-
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    setRevealed(false);
-    await previousPrompt();
-  };
-
-  const handleNextPrompt = async () => {
-    if (!isHost) {
-      Alert.alert('Host Only', 'Only the host can navigate prompts');
+    // If it's the last prompt, mark game as finished
+    if (isLastPrompt) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+      await finishGame();
       return;
     }
 
-    if (isLastPrompt) return;
+    // Show player selection
+    const playerOptions = players.map(p => ({
+      text: p.name,
+      onPress: async () => {
+        if (Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
+        await setNextPlayer(p.id);
+      },
+    }));
 
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    setRevealed(false);
-    await nextPrompt();
+    Alert.alert(
+      'Select Next Player',
+      'Who should go next?',
+      [
+        ...playerOptions,
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   const handleEndGame = async () => {
@@ -137,7 +170,7 @@ export default function GroupGameScreen() {
   const handleBack = () => {
     Alert.alert(
       'Leave Game',
-      'Go back to category selection? This will end the game for everyone.',
+      'Go back to lobby? This will end the game for everyone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -145,7 +178,7 @@ export default function GroupGameScreen() {
           style: 'default',
           onPress: async () => {
             await leaveRoom();
-            router.back();
+            router.replace('/group/lobby');
           },
         },
       ]
@@ -178,6 +211,15 @@ export default function GroupGameScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Current Turn Indicator */}
+      <View style={styles.turnIndicator}>
+        {isMyTurn ? (
+          <Text style={styles.turnText}>🎯 Your Turn!</Text>
+        ) : (
+          <Text style={styles.turnText}>{activePlayer?.name || 'Player'}'s Turn</Text>
+        )}
+      </View>
+
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBackground}>
@@ -194,6 +236,7 @@ export default function GroupGameScreen() {
           activeOpacity={0.95}
           onPress={handleFlipCard}
           style={styles.promptTouchArea}
+          disabled={!isMyTurn}
         >
           <Animated.View
             style={[
@@ -215,9 +258,11 @@ export default function GroupGameScreen() {
           </Animated.View>
 
           {/* Overlay for tap-to-reveal */}
-          {Platform.OS !== 'web' && !revealed && (
+          {!revealed && (
             <View style={styles.overlay}>
-              <Text style={styles.overlayText}>💕 Tap 💕</Text>
+              <Text style={styles.overlayText}>
+                {isMyTurn ? '💕 Tap to Reveal 💕' : '🔒 Waiting 🔒'}
+              </Text>
             </View>
           )}
         </TouchableOpacity>
@@ -225,63 +270,52 @@ export default function GroupGameScreen() {
 
       {/* Navigation Buttons */}
       <View style={styles.buttonContainer}>
-        {isHost ? (
+        {isMyTurn ? (
           <>
-            {/* End Game Button - Red */}
-            <TouchableOpacity
-              style={styles.endGameButton}
-              onPress={handleEndGame}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#DC2626', '#EF4444']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradient}
-              >
-                <Text style={styles.buttonText}>End Game</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Previous and Next Buttons */}
-            <View style={styles.bottomButtonRow}>
+            {/* Next Person Button */}
+            {revealed && (
               <TouchableOpacity
-                style={[styles.navButton, isFirstPrompt && styles.disabledButton]}
-                onPress={handlePreviousPrompt}
+                style={styles.nextPersonButton}
+                onPress={handleNextPlayer}
                 activeOpacity={0.8}
-                disabled={isFirstPrompt}
               >
                 <LinearGradient
-                  colors={isFirstPrompt ? ['#374151', '#1F2937'] : ['#374151', '#1F2937']}
+                  colors={isLastPrompt ? ['#10B981', '#34D399'] : ['#10B981', '#34D399']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.gradient}
                 >
-                  <Text style={[styles.buttonText, isFirstPrompt && styles.disabledText]}>← Previous</Text>
+                  <Text style={styles.buttonText}>
+                    {isLastPrompt ? 'Finish Game 🎉' : 'Next Person →'}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.navButton, isLastPrompt && styles.disabledButton]}
-                onPress={handleNextPrompt}
-                activeOpacity={0.8}
-                disabled={isLastPrompt}
-              >
-                <LinearGradient
-                  colors={['#FF6B9D', '#FEC5E5']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gradient}
-                >
-                  <Text style={[styles.buttonText, isLastPrompt && styles.disabledText]}>Next →</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+            )}
           </>
         ) : (
           <View style={styles.waitingContainer}>
-            <Text style={styles.waitingText}>Host is in control</Text>
+            <Text style={styles.waitingText}>
+              Waiting for {activePlayer?.name || 'player'} to reveal...
+            </Text>
           </View>
+        )}
+
+        {/* End Game Button - Host Only */}
+        {isHost && (
+          <TouchableOpacity
+            style={styles.endGameButton}
+            onPress={handleEndGame}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#DC2626', '#EF4444']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradient}
+            >
+              <Text style={styles.buttonText}>End Game</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -314,6 +348,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#EC4899',
     fontWeight: '600',
+  },
+  turnIndicator: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#1F2937',
+    alignItems: 'center',
+    marginTop: 80,
+  },
+  turnText: {
+    fontSize: 18,
+    color: '#10B981',
+    fontWeight: 'bold',
   },
   progressContainer: {
     paddingHorizontal: 20,
@@ -401,6 +447,23 @@ const styles = StyleSheet.create({
   buttonContainer: {
     padding: 20,
     paddingBottom: 40,
+  },
+  nextPersonButton: {
+    width: '100%',
+    overflow: 'hidden',
+    borderRadius: 16,
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   endGameButton: {
     width: '100%',
