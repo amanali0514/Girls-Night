@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 
 export default function GroupEndScreen() {
   const router = useRouter();
-  const { isHost, playAgain, leaveRoom, started, gameFinished } = useGroup();
+  const { isHost, playAgain, leaveRoom, started, gameFinished, roomId } = useGroup();
 
   // Navigate non-hosts back to lobby when host plays again
   useEffect(() => {
@@ -16,6 +16,13 @@ export default function GroupEndScreen() {
       router.replace('/group/lobby');
     }
   }, [started, gameFinished, isHost]);
+
+  // Navigate to home when room is deleted (host ends session)
+  useEffect(() => {
+    if (!roomId && !isHost) {
+      router.replace('/');
+    }
+  }, [roomId, isHost]);
 
   const handlePlayAgain = async () => {
     if (!isHost) {
