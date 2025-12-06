@@ -30,6 +30,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
   const [promptSubmissionPhase, setPromptSubmissionPhase] = useState<boolean>(false);
   const [gameFinished, setGameFinished] = useState<boolean>(false);
+  const [revealed, setRevealed] = useState<boolean>(false);
 
   // Subscribe to room updates
   useEffect(() => {
@@ -60,6 +61,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
             active_player_id: string | null;
             prompt_submission_phase: boolean;
             game_finished: boolean;
+            revealed: boolean;
           };
           
           setPlayers(room.players || []);
@@ -68,6 +70,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
           setActivePlayerId(room.active_player_id || null);
           setPromptSubmissionPhase(room.prompt_submission_phase || false);
           setGameFinished(room.game_finished || false);
+          setRevealed(room.revealed || false);
           
           if (room.category) setCategory(room.category);
           if (room.prompts) setPrompts(room.prompts);
@@ -235,7 +238,10 @@ export function GroupProvider({ children }: { children: ReactNode }) {
 
       const { error } = await supabase
         .from('rooms')
-        .update({ current_prompt_index: newIndex })
+        .update({ 
+          current_prompt_index: newIndex,
+          revealed: false,
+        })
         .eq('id', roomId);
 
       if (error) throw error;
@@ -243,6 +249,22 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       setCurrentPromptIndex(newIndex);
     } catch (error) {
       console.error('Error moving to previous prompt:', error);
+      throw error;
+    }
+  };
+
+  const revealCard = async (): Promise<void> => {
+    if (!roomId) return;
+
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ revealed: !revealed })
+        .eq('id', roomId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error toggling reveal state:', error);
       throw error;
     }
   };
@@ -301,6 +323,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     setActivePlayerId(null);
     setPromptSubmissionPhase(false);
     setGameFinished(false);
+    setRevealed(false);
   };
 
   const submitPrompt = async (prompt: string): Promise<void> => {
@@ -338,12 +361,19 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     if (!roomId) return;
 
     try {
+      const newIndex = currentPromptIndex + 1;
+      
       await supabase
         .from('rooms')
-        .update({ active_player_id: nextPlayerId })
+        .update({ 
+          active_player_id: nextPlayerId,
+          current_prompt_index: newIndex,
+          revealed: false,
+        })
         .eq('id', roomId);
 
       setActivePlayerId(nextPlayerId);
+      setCurrentPromptIndex(newIndex);
     } catch (error) {
       console.error('Error setting next player:', error);
       throw error;
@@ -483,6 +513,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         activePlayerId,
         promptSubmissionPhase,
         gameFinished,
+        revealed,
         myPlayerId,
         createRoom,
         joinRoom,
@@ -497,6 +528,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         playAgain,
         finishGame,
         updatePlayerName,
+        revealCard,
       }}
     >
       {children}

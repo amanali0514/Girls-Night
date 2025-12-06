@@ -26,6 +26,7 @@ export interface Room {
   activePlayerId?: string | null;
   promptSubmissionPhase?: boolean;
   gameFinished?: boolean;
+  revealed?: boolean;
 }
 
 export interface GameContextType {
@@ -57,6 +58,7 @@ export interface GroupContextType {
   activePlayerId: string | null;
   promptSubmissionPhase: boolean;
   gameFinished: boolean;
+  revealed: boolean;
   myPlayerId: string;
   createRoom(category: Category): Promise<string>;
   joinRoom(code: string, playerName: string): Promise<void>;
@@ -71,4 +73,5 @@ export interface GroupContextType {
   playAgain(): Promise<void>;
   finishGame(): Promise<void>;
   updatePlayerName(newName: string): Promise<void>;
+  revealCard(): Promise<void>;
 }

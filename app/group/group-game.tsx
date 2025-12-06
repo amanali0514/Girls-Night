@@ -30,8 +30,9 @@ export default function GroupGameScreen() {
     setNextPlayer,
     gameFinished,
     finishGame,
+    revealed,
+    revealCard,
   } = useGroup();
-  const [revealed, setRevealed] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
@@ -88,15 +89,10 @@ export default function GroupGameScreen() {
     }
   }, [revealed]);
 
-  // Reset revealed state when prompt changes
-  useEffect(() => {
-    setRevealed(false);
-  }, [currentPromptIndex]);
-
   // Auto-reveal on web
   useEffect(() => {
     if (Platform.OS === 'web' && currentPrompt) {
-      setRevealed(true);
+      revealCard();
     }
   }, [currentPrompt]);
 
@@ -110,7 +106,7 @@ export default function GroupGameScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    setRevealed(!revealed);
+    revealCard();
   };
 
   const handleNextPlayer = async () => {
