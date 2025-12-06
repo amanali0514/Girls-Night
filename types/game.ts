@@ -70,4 +70,5 @@ export interface GroupContextType {
   changeCategory(newCategory: Category): Promise<void>;
   playAgain(): Promise<void>;
   finishGame(): Promise<void>;
+  updatePlayerName(newName: string): Promise<void>;
 }

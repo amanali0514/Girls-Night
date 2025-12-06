@@ -7,6 +7,8 @@ import {
   ScrollView,
   Platform,
   Share,
+  Alert,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 
 export default function LobbyScreen() {
   const router = useRouter();
-  const { roomId, players, isHost, started, startGame, leaveRoom, promptSubmissionPhase } = useGroup();
+  const { roomId, players, isHost, started, startGame, leaveRoom, promptSubmissionPhase, myPlayerId, updatePlayerName } = useGroup();
 
   useEffect(() => {
     if (started) {
@@ -69,6 +71,42 @@ export default function LobbyScreen() {
     router.replace('/');
   };
 
+  const handleEditName = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    const currentPlayer = players.find(p => p.id === myPlayerId);
+    const currentName = currentPlayer?.name || '';
+
+    Alert.prompt(
+      'Edit Your Name',
+      'Enter your new name',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Save',
+          onPress: async (newName) => {
+            if (!newName || newName.trim().length === 0) {
+              Alert.alert('Error', 'Name cannot be empty');
+              return;
+            }
+            try {
+              await updatePlayerName(newName.trim());
+            } catch (error) {
+              Alert.alert('Error', 'Failed to update name. Please try again.');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      currentName
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -117,6 +155,15 @@ export default function LobbyScreen() {
                   <View style={styles.hostBadge}>
                     <Text style={styles.hostBadgeText}>HOST</Text>
                   </View>
+                )}
+                {isHost && player.id === myPlayerId && (
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={handleEditName}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.editButtonText}>✏️</Text>
+                  </TouchableOpacity>
                 )}
               </View>
             ))}
@@ -259,9 +306,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   hostBadgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  editButton: {
+    padding: 8,
+    marginLeft: 4,
+  },
+  editButtonText: {
+    fontSize: 18,
   },
   button: {
     width: '100%',

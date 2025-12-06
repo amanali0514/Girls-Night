@@ -441,6 +441,34 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updatePlayerName = async (newName: string): Promise<void> => {
+    if (!roomId) return;
+
+    try {
+      // Get current room data
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (!room) throw new Error('Room not found');
+
+      // Update the player's name in the players array
+      const updatedPlayers = (room.players as Player[]).map(p => 
+        p.id === myPlayerId ? { ...p, name: newName } : p
+      );
+
+      await supabase
+        .from('rooms')
+        .update({ players: updatedPlayers })
+        .eq('id', roomId);
+    } catch (error) {
+      console.error('Error updating player name:', error);
+      throw error;
+    }
+  };
+
   return (
     <GroupContext.Provider
       value={{
@@ -468,6 +496,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         changeCategory,
         playAgain,
         finishGame,
+        updatePlayerName,
       }}
     >
       {children}
