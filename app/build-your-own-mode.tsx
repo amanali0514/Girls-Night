@@ -21,7 +21,7 @@ export default function BuildYourOwnModeScreen() {
     if (mode === 'local') {
       router.push('/player-setup');
     } else {
-      router.push('/group/custom-prompts-host');
+      router.push('/group/host');
     }
   };
 

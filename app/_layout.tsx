@@ -22,10 +22,10 @@ export default function RootLayout() {
           <Stack.Screen name="end" />
           <Stack.Screen name="group/host" />
           <Stack.Screen name="group/join" />
-          <Stack.Screen name="group/custom-prompts-host" />
-          <Stack.Screen name="group/custom-prompts" />
           <Stack.Screen name="group/lobby" />
+          <Stack.Screen name="group/submit-prompt" />
           <Stack.Screen name="group/group-game" />
+          <Stack.Screen name="group/group-end" />
         </Stack>
       </GroupProvider>
     </GameProvider>
