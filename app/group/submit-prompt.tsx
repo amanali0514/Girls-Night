@@ -20,7 +20,7 @@ const TIMER_DURATION = 25; // 25 seconds
 
 export default function SubmitPromptScreen() {
   const router = useRouter();
-  const { submitPrompt, players, myPlayerId, roomId } = useGroup();
+  const { submitPrompt, players, myPlayerId, roomId, isHost } = useGroup();
   const [prompt, setPrompt] = useState('');
   const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
   const [submitted, setSubmitted] = useState(false);
@@ -29,6 +29,13 @@ export default function SubmitPromptScreen() {
   // Find current player
   const currentPlayer = players.find(p => p.id === myPlayerId);
   const playerName = currentPlayer?.name || 'Player';
+
+  // Navigate to home when room is deleted (host ends session)
+  useEffect(() => {
+    if (!roomId && !isHost) {
+      router.replace('/');
+    }
+  }, [roomId, isHost]);
 
   // Timer countdown
   useEffect(() => {

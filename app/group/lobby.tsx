@@ -32,6 +32,13 @@ export default function LobbyScreen() {
     }
   }, [started, promptSubmissionPhase]);
 
+  // Navigate to home when room is deleted (host ends session)
+  useEffect(() => {
+    if (!roomId && !isHost) {
+      router.replace('/');
+    }
+  }, [roomId, isHost]);
+
   const handleStartGame = async () => {
     if (!isHost) return;
 
