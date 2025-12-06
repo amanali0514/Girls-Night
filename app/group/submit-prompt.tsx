@@ -66,29 +66,57 @@ export default function SubmitPromptScreen() {
       if (allSubmitted && submitted) {
         // All players have submitted, compile prompts and start game
         try {
-          // Derangement shuffle helper
-          const derange = (list: string[]): string[] => {
-            const arr = [...list];
+          // Create a mapping of player ID to their prompt
+          const playerPrompts = players.map(p => ({
+            playerId: p.id,
+            prompt: p.prompt || ''
+          })).filter(pp => pp.prompt);
+
+          // Ensure each player gets someone else's prompt
+          // For each player, assign them a prompt from a different player
+          const assignPrompts = (): string[] => {
+            const prompts: string[] = new Array(players.length);
+            const availablePrompts = [...playerPrompts];
             let attempts = 0;
             const maxAttempts = 1000;
 
             while (attempts < maxAttempts) {
-              for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
+              const tempPrompts: string[] = new Array(players.length);
+              const tempAvailable = [...playerPrompts];
+              let valid = true;
+
+              for (let i = 0; i < players.length; i++) {
+                const currentPlayerId = players[i].id;
+                // Filter out prompts created by the current player
+                const validPrompts = tempAvailable.filter(pp => pp.playerId !== currentPlayerId);
+                
+                if (validPrompts.length === 0) {
+                  valid = false;
+                  break;
+                }
+
+                // Randomly select from valid prompts
+                const randomIndex = Math.floor(Math.random() * validPrompts.length);
+                const selected = validPrompts[randomIndex];
+                tempPrompts[i] = selected.prompt;
+                
+                // Remove the selected prompt from available
+                const indexToRemove = tempAvailable.findIndex(pp => pp === selected);
+                tempAvailable.splice(indexToRemove, 1);
               }
-              const isValid = arr.every((item, index) => item !== list[index]);
-              if (isValid) return arr;
+
+              if (valid) {
+                return tempPrompts;
+              }
+              
               attempts++;
             }
-            return arr;
+
+            // Fallback: just shuffle if we can't find valid assignment
+            return playerPrompts.map(pp => pp.prompt).sort(() => Math.random() - 0.5);
           };
 
-          // Get prompts in player order
-          const promptsList = players.map(p => p.prompt || '').filter(Boolean);
-          
-          // Apply derangement
-          const derangedPrompts = derange(promptsList);
+          const assignedPrompts = assignPrompts();
 
           // Select random first player
           const randomIndex = Math.floor(Math.random() * players.length);
@@ -98,7 +126,7 @@ export default function SubmitPromptScreen() {
           await supabase
             .from('rooms')
             .update({ 
-              prompts: derangedPrompts,
+              prompts: assignedPrompts,
               prompt_submission_phase: false,
               active_player_id: firstPlayerId
             })
