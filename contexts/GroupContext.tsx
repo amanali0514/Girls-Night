@@ -431,7 +431,8 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         current_prompt_index: 0,
         started: false,
         active_player_id: null,
-        game_finished: false
+        game_finished: false,
+        revealed: false
       };
 
       // If Build Your Own, enter prompt submission phase
@@ -448,6 +449,8 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       setCurrentPromptIndex(0);
       setStarted(false);
       setActivePlayerId(null);
+      setGameFinished(false);
+      setRevealed(false);
       setGameFinished(false);
     } catch (error) {
       console.error('Error playing again:', error);

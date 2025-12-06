@@ -124,25 +124,14 @@ export default function GroupGameScreen() {
       return;
     }
 
-    // Show player selection
-    const playerOptions = players.map(p => ({
-      text: p.name,
-      onPress: async () => {
-        if (Platform.OS !== 'web') {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        }
-        await setNextPlayer(p.id);
-      },
-    }));
-
-    Alert.alert(
-      'Select Next Player',
-      'Who should go next?',
-      [
-        ...playerOptions,
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    // Randomly select next player
+    const randomPlayer = players[Math.floor(Math.random() * players.length)];
+    
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    
+    await setNextPlayer(randomPlayer.id);
   };
 
   const handleEndGame = async () => {

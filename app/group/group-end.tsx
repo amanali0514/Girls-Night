@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,7 +8,14 @@ import * as Haptics from 'expo-haptics';
 
 export default function GroupEndScreen() {
   const router = useRouter();
-  const { isHost, playAgain, leaveRoom } = useGroup();
+  const { isHost, playAgain, leaveRoom, started, gameFinished } = useGroup();
+
+  // Navigate non-hosts back to lobby when host plays again
+  useEffect(() => {
+    if (!isHost && !started && !gameFinished) {
+      router.replace('/group/lobby');
+    }
+  }, [started, gameFinished, isHost]);
 
   const handlePlayAgain = async () => {
     if (!isHost) {
