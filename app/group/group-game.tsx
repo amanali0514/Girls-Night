@@ -43,11 +43,11 @@ export default function GroupGameScreen() {
   const isMyTurn = activePlayerId === myPlayerId;
   const activePlayer = players.find(p => p.id === activePlayerId);
 
-  // Handle room deletion (when host ends game)
+  // Handle room deletion (when host leaves/deletes room)
   useEffect(() => {
     if (!roomId && !isHost) {
       // Room was deleted by host, navigate to end screen
-      router.replace('/end');
+      router.replace('/group/group-end');
     }
   }, [roomId, isHost]);
 
@@ -135,6 +135,11 @@ export default function GroupGameScreen() {
   };
 
   const handleEndGame = async () => {
+    if (!isHost) {
+      Alert.alert('Host Only', 'Only the host can end the game!');
+      return;
+    }
+
     Alert.alert(
       'End Game',
       'Are you sure you want to end the game? This will end it for everyone.',
@@ -144,8 +149,10 @@ export default function GroupGameScreen() {
           text: 'End Game',
           style: 'destructive',
           onPress: async () => {
-            await leaveRoom();
-            router.replace('/end');
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            }
+            await finishGame();
           },
         },
       ]

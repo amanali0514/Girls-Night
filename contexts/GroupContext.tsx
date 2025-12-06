@@ -107,6 +107,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         prompts: categoryPrompts,
         started: false,
         created_at: new Date().toISOString(),
+        revealed: false,
       });
 
       if (error) throw error;
