@@ -96,7 +96,7 @@ export default function LobbyScreen() {
         },
         {
           text: 'Save',
-          onPress: async (newName) => {
+          onPress: async (newName?: string) => {
             if (!newName || newName.trim().length === 0) {
               Alert.alert('Error', 'Name cannot be empty');
               return;
