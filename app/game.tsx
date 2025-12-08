@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { useGame } from '../contexts/GameContext';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PRELOAD_BUFFER = 3; // how many cards ahead to keep ready
 
 // Pastel color palette for cards
 const PASTEL_COLORS: readonly [string, string][] = [
@@ -27,8 +28,8 @@ const PASTEL_COLORS: readonly [string, string][] = [
   ['#F472B6', '#FBCFE8'], // Hot Pink
 ];
 
-// Flip Card Component
-const FlipCard = ({ item, index, isFlipped, onFlip }: { 
+// Flip Card Component - Memoized for performance
+const FlipCard = React.memo(({ item, index, isFlipped, onFlip }: { 
   item: string; 
   index: number; 
   isFlipped: boolean;
@@ -70,11 +71,7 @@ const FlipCard = ({ item, index, isFlipped, onFlip }: {
 
   return (
     <View style={styles.cardContainer}>
-      <TouchableOpacity
-        onPress={() => onFlip(index)}
-        activeOpacity={0.95}
-        style={styles.flipCardContainer}
-      >
+      <View style={styles.flipCardContainer}>
         {/* Front of card - "Tap to reveal" */}
         <Animated.View
           style={[
@@ -86,14 +83,20 @@ const FlipCard = ({ item, index, isFlipped, onFlip }: {
             },
           ]}
         >
-          <LinearGradient
-            colors={colors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.tapOverlay}
+          <TouchableOpacity
+            onPress={() => onFlip(index)}
+            activeOpacity={0.95}
+            style={styles.tapArea}
           >
-            <Text style={styles.tapText}>💕 Tap to reveal 💕</Text>
-          </LinearGradient>
+            <LinearGradient
+              colors={colors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.tapOverlay}
+            >
+              <Text style={styles.tapText}>💕 Tap to reveal 💕</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Back of card - actual prompt */}
@@ -107,19 +110,25 @@ const FlipCard = ({ item, index, isFlipped, onFlip }: {
             },
           ]}
         >
-          <LinearGradient
-            colors={['#EC4899', '#8B5CF6']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.promptGradient}
+          <TouchableOpacity
+            onPress={() => onFlip(index)}
+            activeOpacity={0.95}
+            style={styles.tapArea}
           >
-            <Text style={styles.promptText}>{item}</Text>
-          </LinearGradient>
+            <LinearGradient
+              colors={['#EC4899', '#8B5CF6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.promptGradient}
+            >
+              <Text style={styles.promptText}>{item}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
-      </TouchableOpacity>
+      </View>
     </View>
   );
-};
+});
 
 export default function GameScreen() {
   const router = useRouter();
@@ -127,17 +136,35 @@ export default function GameScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flippedCards, setFlippedCards] = useState<{ [key: number]: boolean }>({});
   const flatListRef = useRef<FlatList>(null);
+  const lastSettledIndex = useRef(0);
 
 
   // Get all prompts loaded so far
   const allPrompts = Array.from(usedIndices).map(index => prompts[index]).filter(Boolean);
 
-  useEffect(() => {
-    // Load first prompt on mount
-    if (allPrompts.length === 0 && usedIndices.size === 0) {
-      getNextPrompt();
+  const preloadBuffer = useCallback((visibleIndex: number) => {
+    if (totalPrompts === 0) return false;
+
+    // Ensure we always have the current card plus a few ahead loaded
+    const desiredCount = Math.min(totalPrompts, visibleIndex + PRELOAD_BUFFER + 1);
+    let currentCount = allPrompts.length;
+    let exhausted = false;
+
+    while (currentCount < desiredCount) {
+      const hasMore = getNextPrompt();
+      if (!hasMore) {
+        exhausted = true;
+        break;
+      }
+      currentCount += 1;
     }
-  }, []);
+
+    return exhausted;
+  }, [allPrompts.length, getNextPrompt, totalPrompts]);
+
+  useEffect(() => {
+    preloadBuffer(currentIndex);
+  }, [currentIndex, totalPrompts, allPrompts.length, preloadBuffer]);
 
   const handleFlipCard = (index: number) => {
     if (Platform.OS !== 'web') {
@@ -146,9 +173,9 @@ export default function GameScreen() {
     setFlippedCards(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const handleLoadMore = () => {
-    const hasMore = getNextPrompt();
-    if (!hasMore) {
+  const handleLoadMore = (visibleIndex: number) => {
+    const hitEnd = preloadBuffer(visibleIndex);
+    if (hitEnd) {
       router.replace('/end');
     }
   };
@@ -161,7 +188,7 @@ export default function GameScreen() {
     router.replace('/');
   };
 
-  const renderCard = ({ item, index }: { item: string; index: number }) => {
+  const renderCard = React.useCallback(({ item, index }: { item: string; index: number }) => {
     const isFlipped = flippedCards[index] || Platform.OS === 'web';
     return (
       <FlipCard 
@@ -171,14 +198,14 @@ export default function GameScreen() {
         onFlip={handleFlipCard}
       />
     );
-  };
+  }, [flippedCards]);
 
   const handleNext = () => {
     if (currentIndex < allPrompts.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else if (allPrompts.length < totalPrompts) {
       // Only load more if we haven't reached total
-      handleLoadMore();
+      handleLoadMore(currentIndex + 1);
       // Wait a bit then scroll to the new card
       setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
@@ -191,6 +218,26 @@ export default function GameScreen() {
       flatListRef.current?.scrollToIndex({ index: currentIndex - 1, animated: true });
     }
   };
+
+  // Update index as soon as drag ends so the top bar reflects the next card promptly
+  interface ScrollEndDragEvent {
+    nativeEvent: {
+      contentOffset: {
+        x: number;
+        y: number;
+      };
+    };
+  }
+
+  const handleScrollEndDrag = useCallback((event: ScrollEndDragEvent) => {
+    const offsetX: number = event.nativeEvent.contentOffset.x;
+    const rawIndex: number = Math.round(offsetX / SCREEN_WIDTH);
+    const targetIndex: number = Math.min(Math.max(rawIndex, 0), Math.max(allPrompts.length - 1, 0));
+
+    setCurrentIndex(targetIndex);
+    lastSettledIndex.current = targetIndex;
+    handleLoadMore(targetIndex);
+  }, [allPrompts.length, handleLoadMore]);
 
   // Progress shows current card position, not total loaded
   const progress = totalPrompts > 0 ? (currentIndex + 1) / totalPrompts : 0;
@@ -228,21 +275,31 @@ export default function GameScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         snapToInterval={SCREEN_WIDTH}
-        decelerationRate={0.9}
+        decelerationRate={0.988}
         snapToAlignment="center"
         scrollEventThrottle={16}
-        removeClippedSubviews={false}
-        initialNumToRender={2}
-        maxToRenderPerBatch={2}
-        windowSize={3}
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        disableIntervalMomentum={true}
+        overScrollMode="never"
+        bounces={false}
+        scrollEnabled={true}
+        nestedScrollEnabled={false}
+        getItemLayout={(data, index) => ({
+          length: SCREEN_WIDTH,
+          offset: SCREEN_WIDTH * index,
+          index,
+        })}
+        onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={(event) => {
           const newIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
           setCurrentIndex(newIndex);
-          
-          // Preload next card when we're one card away from the end
-          if (newIndex >= allPrompts.length - 2 && allPrompts.length < totalPrompts) {
-            handleLoadMore();
-          }
+          lastSettledIndex.current = newIndex;
+
+          // Keep a buffer ahead so fast swipes never outrun loaded cards
+          handleLoadMore(newIndex);
         }}
         contentContainerStyle={styles.flatListContent}
       />
@@ -334,7 +391,7 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: SCREEN_WIDTH,
-    flex: 1,
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 30,
@@ -345,6 +402,10 @@ const styles = StyleSheet.create({
     height: '85%',
     maxWidth: 500,
     maxHeight: 600,
+  },
+  tapArea: {
+    width: '100%',
+    height: '100%',
   },
   cardFace: {
     position: 'absolute',

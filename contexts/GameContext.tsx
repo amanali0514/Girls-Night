@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useRef } from 'react';
 import { Category, GameContextType } from '../types/game';
 import { prompts as promptsData } from '../data/prompts';
 
@@ -38,6 +38,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
   const [totalPrompts, setTotalPrompts] = useState<number>(0);
   const [promptsUsedCount, setPromptsUsedCount] = useState<number>(0);
+  const usedIndicesRef = useRef<Set<number>>(new Set());
 
   const setPlayers = (names: string[]) => {
     setPlayersState(names);
@@ -58,6 +59,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
     
     setUsedIndices(new Set());
+    usedIndicesRef.current = new Set();
     setPromptsUsedCount(0);
     setCurrentPrompt(null);
   };
@@ -71,6 +73,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setPrompts(derangedPrompts);
     setTotalPrompts(derangedPrompts.length);
     setUsedIndices(new Set());
+    usedIndicesRef.current = new Set();
     setPromptsUsedCount(0);
     setCurrentPrompt(null);
   };
@@ -78,21 +81,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const getNextPrompt = (): boolean => {
     if (prompts.length === 0) return false;
 
-    // Find unused indices
+    const currentUsed = usedIndicesRef.current;
     const unusedIndices = prompts
       .map((_, index) => index)
-      .filter((index) => !usedIndices.has(index));
+      .filter((index) => !currentUsed.has(index));
 
     if (unusedIndices.length === 0) {
       return false; // No more prompts
     }
 
-    // Pick a random unused index
     const randomIndex = unusedIndices[Math.floor(Math.random() * unusedIndices.length)];
-    
+    const nextUsed = new Set(currentUsed);
+    nextUsed.add(randomIndex);
+
+    usedIndicesRef.current = nextUsed;
+    setUsedIndices(nextUsed);
     setCurrentPrompt(prompts[randomIndex]);
-    setUsedIndices(new Set([...usedIndices, randomIndex]));
-    setPromptsUsedCount(promptsUsedCount + 1);
+    setPromptsUsedCount((count) => count + 1);
 
     return true;
   };
@@ -105,6 +110,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setPlayersState([]);
     setCurrentPrompt(null);
     setUsedIndices(new Set());
+    usedIndicesRef.current = new Set();
     setTotalPrompts(0);
     setPromptsUsedCount(0);
   };
