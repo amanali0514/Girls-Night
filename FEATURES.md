@@ -13,7 +13,7 @@ Each with 30 unique prompts:
 - 😌 **Confessions**: Juicy, fun, personal questions
 - 💪 **Dare**: PG-13 challenges and activities
 - 😈 **Toxic**: Spicy, dramatic, bold prompts
-- ✨ **Chill**: Wholesome, positive vibes
+- ✨ **Would You Rather**: Wholesome, positive vibes
 
 #### 3. **Build Your Own**
 - Custom player count (2-10)

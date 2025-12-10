@@ -11,7 +11,7 @@ const categories = [
   { id: Category.Confessions, name: 'Confessions', emoji: '😌', colors: ['#EC4899', '#F472B6'] as const },
   { id: Category.Dare, name: 'Dare', emoji: '💪', colors: ['#8B5CF6', '#A78BFA'] as const },
   { id: Category.Toxic, name: 'Toxic', emoji: '😈', colors: ['#EF4444', '#F87171'] as const },
-  { id: Category.Chill, name: 'Chill', emoji: '✨', colors: ['#3B82F6', '#60A5FA'] as const },
+  { id: Category.Chill, name: 'Would You Rather', emoji: '✨', colors: ['#3B82F6', '#60A5FA'] as const },
 ];
 
 export default function CategoriesScreen() {
