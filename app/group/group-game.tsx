@@ -34,9 +34,11 @@ export default function GroupGameScreen() {
     revealed,
     revealCard,
     category,
+    sessionEndedReason,
   } = useGroup();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const [sessionAlerted, setSessionAlerted] = useState(false);
 
   const currentPrompt = prompts[currentPromptIndex];
   const isLastPrompt = currentPromptIndex >= prompts.length - 1;
@@ -59,6 +61,15 @@ export default function GroupGameScreen() {
       router.replace('/group/group-end');
     }
   }, [gameFinished]);
+
+  // Notify non-hosts when host ends session mid-game
+  useEffect(() => {
+    if (!roomId && !isHost && sessionEndedReason && !sessionAlerted) {
+      setSessionAlerted(true);
+      Alert.alert('Host ended session', 'Returning to home.');
+      router.replace('/');
+    }
+  }, [roomId, isHost, sessionEndedReason, sessionAlerted]);
 
   useEffect(() => {
     if (revealed || Platform.OS === 'web') {

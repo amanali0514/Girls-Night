@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,7 +8,8 @@ import * as Haptics from 'expo-haptics';
 
 export default function GroupEndScreen() {
   const router = useRouter();
-  const { isHost, playAgain, leaveRoom, started, gameFinished, roomId } = useGroup();
+  const { isHost, playAgain, leaveRoom, started, gameFinished, roomId, sessionEndedReason } = useGroup();
+  const [sessionAlerted, setSessionAlerted] = useState(false);
 
   // Navigate non-hosts back to lobby when host plays again
   useEffect(() => {
@@ -23,6 +24,15 @@ export default function GroupEndScreen() {
       router.replace('/');
     }
   }, [roomId, isHost]);
+
+  // Non-hosts see a notice if the host ends the session here
+  useEffect(() => {
+    if (!roomId && !isHost && sessionEndedReason && !sessionAlerted) {
+      setSessionAlerted(true);
+      Alert.alert('Host ended session', 'Returning to home.');
+      router.replace('/');
+    }
+  }, [roomId, isHost, sessionEndedReason, sessionAlerted]);
 
   const handlePlayAgain = async () => {
     if (!isHost) {
