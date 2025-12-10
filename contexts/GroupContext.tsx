@@ -48,7 +48,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       }, (payload) => {
         // Handle room deletion (when host ends game)
         if (payload.eventType === 'DELETE') {
-          resetGroup('host-ended');
+          resetGroup(isHost ? undefined : 'host-ended');
           return;
         }
 
@@ -313,7 +313,8 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         await channel.unsubscribe();
       }
 
-      resetGroup(isHost ? 'host-ended' : undefined);
+      // Host already knows; don't show them a host-ended reason
+      resetGroup(isHost ? undefined : 'host-ended');
     } catch (error) {
       console.error('Error leaving room:', error);
       resetGroup();
