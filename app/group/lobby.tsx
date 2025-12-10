@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,8 @@ import * as Haptics from 'expo-haptics';
 
 export default function LobbyScreen() {
   const router = useRouter();
-  const { roomId, players, isHost, started, startGame, leaveRoom, promptSubmissionPhase, myPlayerId, updatePlayerName } = useGroup();
+  const { roomId, players, isHost, started, startGame, leaveRoom, promptSubmissionPhase, myPlayerId, updatePlayerName, sessionEndedReason } = useGroup();
+  const [roomEnded, setRoomEnded] = useState(false);
 
   useEffect(() => {
     if (started) {
@@ -34,10 +35,12 @@ export default function LobbyScreen() {
 
   // Navigate to home when room is deleted (host ends session)
   useEffect(() => {
-    if (!roomId && !isHost) {
+    if (!roomId && !isHost && !roomEnded && sessionEndedReason) {
+      setRoomEnded(true);
+      Alert.alert('Host ended session', 'Returning to home.');
       router.replace('/');
     }
-  }, [roomId, isHost]);
+  }, [roomId, isHost, roomEnded, sessionEndedReason]);
 
   const handleStartGame = async () => {
     if (!isHost) return;

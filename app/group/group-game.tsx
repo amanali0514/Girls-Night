@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useGroup } from '../../contexts/GroupContext';
+import { Category } from '../../types/game';
 import * as Haptics from 'expo-haptics';
 
 export default function GroupGameScreen() {
@@ -32,6 +33,7 @@ export default function GroupGameScreen() {
     finishGame,
     revealed,
     revealCard,
+    category,
   } = useGroup();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -124,14 +126,17 @@ export default function GroupGameScreen() {
       return;
     }
 
-    // Randomly select next player
-    const randomPlayer = players[Math.floor(Math.random() * players.length)];
+    // In Build Your Own, the prompt at index i belongs to players[i].
+    // For other modes, pick a random next player.
+    const nextPlayerId = category === Category.BuildYourOwn
+      ? players[currentPromptIndex + 1]?.id
+      : players[Math.floor(Math.random() * players.length)]?.id;
     
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     
-    await setNextPlayer(randomPlayer.id);
+    await setNextPlayer(nextPlayerId || undefined);
   };
 
   const handleEndGame = async () => {

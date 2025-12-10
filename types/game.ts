@@ -60,6 +60,7 @@ export interface GroupContextType {
   gameFinished: boolean;
   revealed: boolean;
   myPlayerId: string;
+  sessionEndedReason: string | null;
   createRoom(category: Category): Promise<string>;
   joinRoom(code: string, playerName: string): Promise<void>;
   startGame(): Promise<void>;

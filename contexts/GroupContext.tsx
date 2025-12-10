@@ -31,6 +31,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   const [promptSubmissionPhase, setPromptSubmissionPhase] = useState<boolean>(false);
   const [gameFinished, setGameFinished] = useState<boolean>(false);
   const [revealed, setRevealed] = useState<boolean>(false);
+  const [sessionEndedReason, setSessionEndedReason] = useState<string | null>(null);
 
   // Subscribe to room updates
   useEffect(() => {
@@ -47,7 +48,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       }, (payload) => {
         // Handle room deletion (when host ends game)
         if (payload.eventType === 'DELETE') {
-          resetGroup();
+          resetGroup('host-ended');
           return;
         }
 
@@ -75,6 +76,9 @@ export function GroupProvider({ children }: { children: ReactNode }) {
           if (room.category) setCategory(room.category);
           if (room.prompts) setPrompts(room.prompts);
         }
+      })
+      .on('broadcast', { event: 'room-ended' }, () => {
+        resetGroup('host-ended');
       })
       .subscribe();
 
@@ -274,10 +278,6 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     if (!roomId) return;
 
     try {
-      if (channel) {
-        await channel.unsubscribe();
-      }
-
       // If not host, remove player from room
       if (!isHost) {
         const { data: room } = await supabase
@@ -297,18 +297,30 @@ export function GroupProvider({ children }: { children: ReactNode }) {
             .eq('id', roomId);
         }
       } else {
+        // Broadcast to listeners before deleting the room, in case DELETE is missed
+        if (channel) {
+          await channel.send({
+            type: 'broadcast',
+            event: 'room-ended',
+            payload: { reason: 'host-ended' },
+          });
+        }
         // If host, delete the room
         await supabase.from('rooms').delete().eq('id', roomId);
       }
 
-      resetGroup();
+      if (channel) {
+        await channel.unsubscribe();
+      }
+
+      resetGroup(isHost ? 'host-ended' : undefined);
     } catch (error) {
       console.error('Error leaving room:', error);
       resetGroup();
     }
   };
 
-  const resetGroup = () => {
+  const resetGroup = (reason?: string) => {
     if (channel) {
       channel.unsubscribe();
       setChannel(null);
@@ -325,6 +337,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     setPromptSubmissionPhase(false);
     setGameFinished(false);
     setRevealed(false);
+    setSessionEndedReason(reason ?? null);
   };
 
   const submitPrompt = async (prompt: string): Promise<void> => {
@@ -358,22 +371,33 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const setNextPlayer = async (nextPlayerId: string): Promise<void> => {
+  const setNextPlayer = async (nextPlayerId?: string): Promise<void> => {
     if (!roomId) return;
 
     try {
       const newIndex = currentPromptIndex + 1;
+
+      // If we've exhausted prompts, mark finished instead of writing invalid state
+      if (newIndex >= prompts.length) {
+        await finishGame();
+        return;
+      }
+
+      // For Build Your Own, the prompt at index i belongs to players[i]; keep them aligned
+      const nextAssignedPlayerId = category === Category.BuildYourOwn
+        ? players[newIndex]?.id || null
+        : nextPlayerId || null;
       
       await supabase
         .from('rooms')
         .update({ 
-          active_player_id: nextPlayerId,
+          active_player_id: nextAssignedPlayerId,
           current_prompt_index: newIndex,
           revealed: false,
         })
         .eq('id', roomId);
 
-      setActivePlayerId(nextPlayerId);
+      if (nextAssignedPlayerId) setActivePlayerId(nextAssignedPlayerId);
       setCurrentPromptIndex(newIndex);
     } catch (error) {
       console.error('Error setting next player:', error);
@@ -519,6 +543,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         gameFinished,
         revealed,
         myPlayerId,
+        sessionEndedReason,
         createRoom,
         joinRoom,
         startGame,

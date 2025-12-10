@@ -118,9 +118,8 @@ export default function SubmitPromptScreen() {
 
           const assignedPrompts = assignPrompts();
 
-          // Select random first player
-          const randomIndex = Math.floor(Math.random() * players.length);
-          const firstPlayerId = players[randomIndex].id;
+          // Start with the first player in the list and the first prompt
+          const firstPlayerId = players[0]?.id || null;
 
           // Update the room with the custom prompts and first player
           await supabase
@@ -128,7 +127,8 @@ export default function SubmitPromptScreen() {
             .update({ 
               prompts: assignedPrompts,
               prompt_submission_phase: false,
-              active_player_id: firstPlayerId
+              active_player_id: firstPlayerId,
+              current_prompt_index: 0
             })
             .eq('id', roomId);
 

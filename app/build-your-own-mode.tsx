@@ -1,17 +1,20 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useGame } from '../contexts/GameContext';
 import { Category } from '../types/game';
 import * as Haptics from 'expo-haptics';
+import { useGroup } from '../contexts/GroupContext';
 
 export default function BuildYourOwnModeScreen() {
   const router = useRouter();
   const { selectCategory } = useGame();
+  const { createRoom } = useGroup();
+  const [loading, setLoading] = React.useState(false);
 
-  const handleModeSelect = (mode: 'local' | 'multiplayer') => {
+  const handleModeSelect = async (mode: 'local' | 'multiplayer') => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -21,9 +24,30 @@ export default function BuildYourOwnModeScreen() {
     if (mode === 'local') {
       router.push('/player-setup');
     } else {
-      router.push('/group/host');
+      try {
+        setLoading(true);
+        await createRoom(Category.BuildYourOwn);
+        router.push('/group/lobby');
+      } catch (error) {
+        console.error('Error creating build-your-own room:', error);
+        Alert.alert('Error', 'Failed to start a live game. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <View style={styles.content}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={styles.loadingText}>Creating room...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -107,6 +131,11 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginBottom: 60,
     textAlign: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#9CA3AF',
   },
   buttonContainer: {
     width: '100%',
