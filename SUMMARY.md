@@ -5,7 +5,7 @@
 ### 📱 Full Application Code
 - **10 Screen Components**: Welcome, Categories, Custom Input, Game, End, Host, Join, Lobby, Group Game
 - **2 Context Providers**: Local game state & multiplayer state
-- **120 Prompts**: 30 each for Confessions, Dare, Toxic, Would You Rather
+- **120 Prompts**: 30 each for Confessions, Dare, Toxic, Who's More Likely To
 - **Complete Navigation**: expo-router with stack navigation
 - **TypeScript Types**: Full type safety
 - **Animations**: Fade, scale, hold-to-reveal

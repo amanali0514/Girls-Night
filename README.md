@@ -11,7 +11,7 @@ A mobile party game for girls aged 15-25. Pass the phone around and answer fun p
   - Confessions 😌 - Juicy and fun
   - Dare 💪 - PG-13 challenges
   - Toxic 😈 - Spicy and dramatic
-  - Would You Rather ✨ - Wholesome vibes
+  - Who's More Likely To ✨ - Wholesome vibes
 - 📱 **Hold to Reveal**: Interactive prompt reveal mechanic
 - ✨ **Beautiful UI**: Modern gradient design with haptic feedback
 

@@ -60,7 +60,7 @@ That's it! The app will open, showing you a QR code.
 
 1. **Start the app**
 2. Tap **"Start Local Game"**
-3. Choose any category (try "Would You Rather ✨")
+3. Choose any category (try "Who's More Likely To ✨")
 4. **Hold down** on the screen to reveal the prompt
 5. Tap **"Next Prompt"**
 6. Play through a few prompts

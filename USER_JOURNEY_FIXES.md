@@ -58,7 +58,7 @@ Host Screen → Select "Build Your Own" → Custom Prompts Screen → Lobby → 
    - Enter number of players
    - Enter each player's name
 3. Category Selection
-   - Confessions / Dare / Toxic / Would You Rather / Build Your Own
+   - Confessions / Dare / Toxic / Who's More Likely To / Build Your Own
 4a. Preset Category → Game Screen
 4b. Build Your Own → Custom Input (with player names) → Game Screen
 5. End Screen

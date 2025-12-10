@@ -2,7 +2,7 @@ export enum Category {
   Confessions = 'confessions',
   Dare = 'dare',
   Toxic = 'toxic',
-  Chill = 'chill',
+  WhosMoreLikely = 'whos-more-likely',
   BuildYourOwn = 'build-your-own',
 }
 
