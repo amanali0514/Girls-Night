@@ -33,7 +33,6 @@ export default function GroupGameScreen() {
     finishGame,
     revealed,
     revealCard,
-    category,
     sessionEndedReason,
   } = useGroup();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -137,17 +136,11 @@ export default function GroupGameScreen() {
       return;
     }
 
-    // In Build Your Own, the prompt at index i belongs to players[i].
-    // For other modes, pick a random next player.
-    const nextPlayerId = category === Category.BuildYourOwn
-      ? players[currentPromptIndex + 1]?.id
-      : players[Math.floor(Math.random() * players.length)]?.id;
-    
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     
-    await setNextPlayer(nextPlayerId || undefined);
+    await setNextPlayer();
   };
 
   const handleEndGame = async () => {

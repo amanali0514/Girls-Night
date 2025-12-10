@@ -384,10 +384,25 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // For Build Your Own, the prompt at index i belongs to players[i]; keep them aligned
-      const nextAssignedPlayerId = category === Category.BuildYourOwn
-        ? players[newIndex]?.id || null
-        : nextPlayerId || null;
+      // Keep player order stable (join order) so turns rotate consistently
+      const orderedPlayers = [...players].sort((a, b) => a.joinedAt - b.joinedAt);
+
+      let nextAssignedPlayerId: string | null = null;
+
+      if (category === Category.BuildYourOwn) {
+        // For Build Your Own, the prompt at index i belongs to players[i]; keep them aligned
+        nextAssignedPlayerId = orderedPlayers[newIndex]?.id || null;
+      } else if (nextPlayerId) {
+        // Allow explicit overrides if provided
+        nextAssignedPlayerId = nextPlayerId;
+      } else {
+        // Default to round-robin order so everyone gets a turn
+        const currentIndex = orderedPlayers.findIndex(p => p.id === activePlayerId);
+        const nextIndex = currentIndex === -1
+          ? 0
+          : (currentIndex + 1) % orderedPlayers.length;
+        nextAssignedPlayerId = orderedPlayers[nextIndex]?.id || null;
+      }
       
       await supabase
         .from('rooms')
@@ -398,8 +413,9 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         })
         .eq('id', roomId);
 
-      if (nextAssignedPlayerId) setActivePlayerId(nextAssignedPlayerId);
+      setActivePlayerId(nextAssignedPlayerId);
       setCurrentPromptIndex(newIndex);
+      setRevealed(false);
     } catch (error) {
       console.error('Error setting next player:', error);
       throw error;

@@ -69,7 +69,7 @@ export interface GroupContextType {
   leaveRoom(): Promise<void>;
   resetGroup(): void;
   submitPrompt(prompt: string): Promise<void>;
-  setNextPlayer(nextPlayerId: string): Promise<void>;
+  setNextPlayer(nextPlayerId?: string): Promise<void>;
   changeCategory(newCategory: Category): Promise<void>;
   playAgain(): Promise<void>;
   finishGame(): Promise<void>;
