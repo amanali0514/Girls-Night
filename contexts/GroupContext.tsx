@@ -166,9 +166,13 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       setIsHost(false);
       setCategory(room.category as Category);
       setPlayers(updatedPlayers);
-      setPrompts(room.prompts as string[]);
-      setCurrentPromptIndex(room.current_prompt_index);
-      setStarted(room.started);
+      setPrompts((room.prompts as string[]) || []);
+      setCurrentPromptIndex(room.current_prompt_index || 0);
+      setStarted(room.started || false);
+      setActivePlayerId(room.active_player_id || null);
+      setPromptSubmissionPhase(room.prompt_submission_phase || false);
+      setGameFinished(room.game_finished || false);
+      setRevealed(room.revealed || false);
     } catch (error) {
       console.error('Error joining room:', error);
       throw error;
@@ -193,6 +197,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       // If Build Your Own and prompts aren't set yet, enter submission phase
       if (room.category === Category.BuildYourOwn && (!room.prompts || room.prompts.length === 0)) {
         updates.prompt_submission_phase = true;
+        updates.active_player_id = null; // clear any stale turn from previous category
       } else {
         // For other modes, set random first player
         const randomIndex = Math.floor(Math.random() * (room.players as Player[]).length);
@@ -207,7 +212,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       setStarted(true);
-      if (updates.active_player_id) setActivePlayerId(updates.active_player_id);
+      if (updates.active_player_id !== undefined) setActivePlayerId(updates.active_player_id);
       if (updates.prompt_submission_phase) setPromptSubmissionPhase(true);
     } catch (error) {
       console.error('Error starting game:', error);
@@ -313,8 +318,9 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         await channel.unsubscribe();
       }
 
-      // Host already knows; don't show them a host-ended reason
-      resetGroup(isHost ? undefined : 'host-ended');
+      // Host already knows; don't show them a host-ended reason.
+      // Non-hosts leaving voluntarily should not see a host-ended alert either.
+      resetGroup(isHost ? undefined : 'self-left');
     } catch (error) {
       console.error('Error leaving room:', error);
       resetGroup();

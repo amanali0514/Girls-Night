@@ -27,7 +27,7 @@ export default function GroupEndScreen() {
 
   // Non-hosts see a notice if the host ends the session here
   useEffect(() => {
-    if (!roomId && !isHost && sessionEndedReason && !sessionAlerted) {
+    if (!roomId && !isHost && sessionEndedReason === 'host-ended' && !sessionAlerted) {
       setSessionAlerted(true);
       Alert.alert('Host ended session', 'Returning to home.');
       router.replace('/');

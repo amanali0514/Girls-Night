@@ -35,7 +35,7 @@ export default function LobbyScreen() {
 
   // Navigate to home when room is deleted (host ends session)
   useEffect(() => {
-    if (!roomId && !isHost && !roomEnded && sessionEndedReason) {
+    if (!roomId && !isHost && !roomEnded && sessionEndedReason === 'host-ended') {
       setRoomEnded(true);
       Alert.alert('Host ended session', 'Returning to home.');
       router.replace('/');

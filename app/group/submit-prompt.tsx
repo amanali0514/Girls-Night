@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,13 @@ export default function SubmitPromptScreen() {
   const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [autoSubmitted, setAutoSubmitted] = useState(false);
+  const promptRef = useRef('');
+
+  // Keep latest prompt for auto-submit without restarting timer
+  useEffect(() => {
+    promptRef.current = prompt;
+  }, [prompt]);
 
   // Find current player
   const currentPlayer = players.find(p => p.id === myPlayerId);
@@ -45,9 +52,9 @@ export default function SubmitPromptScreen() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Auto-submit empty if time runs out
+          // Auto-submit with a fallback so the game can continue
           if (!submitted) {
-            handleSubmit();
+            handleAutoSubmit();
           }
           return 0;
         }
@@ -169,6 +176,30 @@ export default function SubmitPromptScreen() {
     }
   };
 
+  const handleAutoSubmit = async () => {
+    if (submitted) return;
+
+    setAutoSubmitted(true);
+
+    Alert.alert(
+      "Time's up",
+      "We auto-submitted your prompt so the game can keep moving."
+    );
+
+    const fallbackPrompt = promptRef.current.trim() || 'No prompt submitted';
+    setLoading(true);
+
+    try {
+      await submitPrompt(fallbackPrompt);
+      setSubmitted(true);
+    } catch (error) {
+      // Keep silent alerts here to avoid stacking multiple popups at timeout
+      console.error('Error auto-submitting prompt:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getTimerColor = () => {
     if (timeLeft > 15) return '#10B981'; // Green
     if (timeLeft > 5) return '#F59E0B'; // Orange
@@ -185,6 +216,11 @@ export default function SubmitPromptScreen() {
         <View style={styles.waitingContainer}>
           <Text style={styles.waitingEmoji}>⏳</Text>
           <Text style={styles.waitingTitle}>Prompt Submitted!</Text>
+          {autoSubmitted && (
+            <Text style={styles.autoSubmitNote}>
+              Time's up! We auto-submitted so the game can keep moving.
+            </Text>
+          )}
           <Text style={styles.waitingSubtitle}>
             Waiting for other players...
           </Text>
@@ -378,6 +414,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
+  },
+  autoSubmitNote: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   waitingSubtitle: {
     fontSize: 18,

@@ -63,7 +63,7 @@ export default function GroupGameScreen() {
 
   // Notify non-hosts when host ends session mid-game
   useEffect(() => {
-    if (!roomId && !isHost && sessionEndedReason && !sessionAlerted) {
+    if (!roomId && !isHost && sessionEndedReason === 'host-ended' && !sessionAlerted) {
       setSessionAlerted(true);
       Alert.alert('Host ended session', 'Returning to home.');
       router.replace('/');
