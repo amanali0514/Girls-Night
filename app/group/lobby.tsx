@@ -17,7 +17,7 @@ import { useGroup } from '../../contexts/GroupContext';
 import { Category } from '../../types/game';
 import * as Haptics from 'expo-haptics';
 
-const CARD_COUNT_OPTIONS = [5, 10, 15, 20, 25, 30];
+const CARD_COUNT_OPTIONS = [10, 15, 20, 25, 30];
 
 export default function LobbyScreen() {
   const router = useRouter();
