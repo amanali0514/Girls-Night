@@ -12,8 +12,6 @@ export interface Player {
   joinedAt: number;
   prompt?: string;
   promptSubmitted?: boolean;
-  voteFor?: string;
-  votePromptIndex?: number;
 }
 
 export interface Room {
@@ -77,5 +75,4 @@ export interface GroupContextType {
   finishGame(): Promise<void>;
   updatePlayerName(newName: string): Promise<void>;
   revealCard(): Promise<void>;
-  submitVote(voteForId: string): Promise<void>;
 }

@@ -409,63 +409,21 @@ export function GroupProvider({ children }: { children: ReactNode }) {
           : (currentIndex + 1) % orderedPlayers.length;
         nextAssignedPlayerId = orderedPlayers[nextIndex]?.id || null;
       }
-
-      // Clear votes between prompts for Who's More Likely so the next round starts fresh
-      const shouldResetVotes = category === Category.WhosMoreLikely;
-      const resetPlayers = shouldResetVotes
-        ? players.map(p => ({
-            ...p,
-            voteFor: undefined,
-            votePromptIndex: undefined,
-          }))
-        : players;
-
-      const updates: any = {
-        active_player_id: nextAssignedPlayerId,
-        current_prompt_index: newIndex,
-        revealed: false,
-      };
-
-      if (shouldResetVotes) {
-        updates.players = resetPlayers;
-      }
       
       await supabase
         .from('rooms')
-        .update(updates)
+        .update({ 
+          active_player_id: nextAssignedPlayerId,
+          current_prompt_index: newIndex,
+          revealed: false,
+        })
         .eq('id', roomId);
 
       setActivePlayerId(nextAssignedPlayerId);
       setCurrentPromptIndex(newIndex);
       setRevealed(false);
-      if (shouldResetVotes) {
-        setPlayers(resetPlayers);
-      }
     } catch (error) {
       console.error('Error setting next player:', error);
-      throw error;
-    }
-  };
-
-  const submitVote = async (voteForId: string): Promise<void> => {
-    if (!roomId) return;
-    if (category !== Category.WhosMoreLikely) return;
-
-    try {
-      const updatedPlayers = players.map(p =>
-        p.id === myPlayerId
-          ? { ...p, voteFor: voteForId, votePromptIndex: currentPromptIndex }
-          : p
-      );
-
-      await supabase
-        .from('rooms')
-        .update({ players: updatedPlayers })
-        .eq('id', roomId);
-
-      setPlayers(updatedPlayers);
-    } catch (error) {
-      console.error('Error submitting vote:', error);
       throw error;
     }
   };
@@ -478,26 +436,18 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         ? [] 
         : promptsData[newCategory as Exclude<Category, Category.BuildYourOwn>];
 
-      const resetPlayers = players.map(p => ({
-        ...p,
-        voteFor: undefined,
-        votePromptIndex: undefined,
-      }));
-
       await supabase
         .from('rooms')
         .update({ 
           category: newCategory,
           prompts: categoryPrompts,
-          current_prompt_index: 0,
-          players: resetPlayers,
+          current_prompt_index: 0
         })
         .eq('id', roomId);
 
       setCategory(newCategory);
       setPrompts(categoryPrompts);
       setCurrentPromptIndex(0);
-      setPlayers(resetPlayers);
     } catch (error) {
       console.error('Error changing category:', error);
       throw error;
@@ -521,9 +471,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       const resetPlayers = (room.players as Player[]).map(p => ({
         ...p,
         prompt: undefined,
-        promptSubmitted: false,
-        voteFor: undefined,
-        votePromptIndex: undefined,
+        promptSubmitted: false
       }));
 
       const updates: any = {
@@ -633,7 +581,6 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         finishGame,
         updatePlayerName,
         revealCard,
-        submitVote,
       }}
     >
       {children}

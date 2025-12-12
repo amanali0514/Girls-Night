@@ -34,8 +34,6 @@ export default function GroupGameScreen() {
     revealed,
     revealCard,
     sessionEndedReason,
-    category,
-    submitVote,
   } = useGroup();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -47,37 +45,6 @@ export default function GroupGameScreen() {
   const progress = prompts.length > 0 ? (currentPromptIndex + 1) / prompts.length : 0;
   const isMyTurn = activePlayerId === myPlayerId;
   const activePlayer = players.find(p => p.id === activePlayerId);
-  const isWhosMoreLikely = category === Category.WhosMoreLikely;
-  const orderedPlayers = [...players].sort((a, b) => a.joinedAt - b.joinedAt);
-  const currentVotes = players.filter(
-    (p) => p.votePromptIndex === currentPromptIndex && !!p.voteFor
-  );
-  const myVoteForId =
-    players.find(
-      (p) => p.id === myPlayerId && p.votePromptIndex === currentPromptIndex
-    )?.voteFor || null;
-  const voteCounts = currentVotes.reduce<Record<string, number>>((acc, p) => {
-    if (p.voteFor) {
-      acc[p.voteFor] = (acc[p.voteFor] || 0) + 1;
-    }
-    return acc;
-  }, {});
-  const winningPlayerId = Object.keys(voteCounts).reduce<string | null>((best, candidate) => {
-    if (best === null) return candidate;
-    if (voteCounts[candidate] > voteCounts[best]) return candidate;
-    if (voteCounts[candidate] === voteCounts[best]) {
-      const candidateIndex = orderedPlayers.findIndex((p) => p.id === candidate);
-      const bestIndex = orderedPlayers.findIndex((p) => p.id === best);
-      if (bestIndex === -1 || (candidateIndex !== -1 && candidateIndex < bestIndex)) {
-        return candidate;
-      }
-    }
-    return best;
-  }, null);
-  const winningPlayer = orderedPlayers.find((p) => p.id === winningPlayerId) || null;
-  const everyoneVoted =
-    isWhosMoreLikely && players.length > 0 && currentVotes.length >= players.length;
-  const votesRemaining = Math.max(players.length - currentVotes.length, 0);
 
   // Handle room deletion (when host leaves/deletes room)
   useEffect(() => {
@@ -141,26 +108,6 @@ export default function GroupGameScreen() {
     }
   }, [currentPrompt]);
 
-  const handleVote = async (voteForId: string) => {
-    if (!isWhosMoreLikely) return;
-    if (!revealed) {
-      Alert.alert('Reveal first', 'Flip the card before voting.');
-      return;
-    }
-
-    if (myVoteForId === voteForId) return;
-
-    try {
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-      await submitVote(voteForId);
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Could not submit vote. Please try again.');
-    }
-  };
-
   const handleFlipCard = () => {
     // Only the active player can flip
     if (!isMyTurn) {
@@ -177,11 +124,6 @@ export default function GroupGameScreen() {
   const handleNextPlayer = async () => {
     if (!isMyTurn) {
       Alert.alert('Not Your Turn', `Only the active player can select the next person!`);
-      return;
-    }
-
-    if (isWhosMoreLikely && revealed && !everyoneVoted) {
-      Alert.alert('Vote First', 'Wait for everyone to vote before moving on.');
       return;
     }
 
@@ -326,61 +268,6 @@ export default function GroupGameScreen() {
           )}
         </TouchableOpacity>
       </View>
-
-      {/* Voting - Who's More Likely To */}
-      {isWhosMoreLikely && (
-        <View style={styles.voteContainer}>
-          <Text style={styles.voteTitle}>Vote: Who's more likely?</Text>
-          {!revealed ? (
-            <Text style={styles.voteHint}>Reveal the card to start voting.</Text>
-          ) : (
-            <>
-              <View style={styles.voteGrid}>
-                {orderedPlayers.map((player) => {
-                  const isSelected = myVoteForId === player.id;
-                  const voteCount = voteCounts[player.id] || 0;
-                  return (
-                    <TouchableOpacity
-                      key={player.id}
-                      style={[
-                        styles.voteButton,
-                        isSelected && styles.voteButtonSelected,
-                        myVoteForId && !isSelected && styles.voteButtonDisabled,
-                      ]}
-                      onPress={() => handleVote(player.id)}
-                      disabled={!!myVoteForId && !isSelected}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.voteButtonName}>{player.name}</Text>
-                      {voteCount > 0 && (
-                        <Text style={styles.voteCount}>{voteCount} vote{voteCount === 1 ? '' : 's'}</Text>
-                      )}
-                      {isSelected && <Text style={styles.voteBadge}>Voted</Text>}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <Text style={styles.voteStatus}>
-                {everyoneVoted
-                  ? 'Everyone voted!'
-                  : myVoteForId
-                    ? `Waiting on ${votesRemaining} vote${votesRemaining === 1 ? '' : 's'}...`
-                    : 'Tap a player to cast your vote.'}
-              </Text>
-              {everyoneVoted && (
-                <View style={styles.winnerCard}>
-                  <Text style={styles.winnerLabel}>Most Votes</Text>
-                  <Text style={styles.winnerName}>
-                    {winningPlayer
-                      ? `${winningPlayer.name} (${voteCounts[winningPlayer.id]} vote${voteCounts[winningPlayer.id] === 1 ? '' : 's'})`
-                      : 'Tie'}
-                  </Text>
-                </View>
-              )}
-            </>
-          )}
-        </View>
-      )}
 
       {/* Navigation Buttons */}
       <View style={styles.buttonContainer}>
@@ -641,81 +528,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#9CA3AF',
     fontStyle: 'italic',
-  },
-  voteContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-  },
-  voteTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  voteHint: {
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-  voteGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 10,
-    justifyContent: 'center',
-  },
-  voteButton: {
-    minWidth: 120,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: '#1F2937',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1F2937',
-  },
-  voteButtonSelected: {
-    borderColor: '#10B981',
-    backgroundColor: '#0F172A',
-  },
-  voteButtonDisabled: {
-    opacity: 0.6,
-  },
-  voteButtonName: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  voteCount: {
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  voteBadge: {
-    color: '#10B981',
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  voteStatus: {
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  winnerCard: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#10B981',
-    alignItems: 'center',
-  },
-  winnerLabel: {
-    color: '#10B981',
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  winnerName: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });
