@@ -16,7 +16,8 @@ import { useGroup } from '../../contexts/GroupContext';
 import { supabase } from '../../utils/supabase';
 import * as Haptics from 'expo-haptics';
 
-const TIMER_DURATION = 25; // 25 seconds
+const TIMER_DURATION = 45; // 45 seconds
+const LAST_PLAYER_TIMER = 10; // 10 seconds when only 1 player left
 
 export default function SubmitPromptScreen() {
   const router = useRouter();
@@ -43,6 +44,21 @@ export default function SubmitPromptScreen() {
       router.replace('/');
     }
   }, [roomId, isHost]);
+
+  // Speed up timer when only 1 player hasn't submitted yet
+  useEffect(() => {
+    if (submitted) return;
+    
+    const playersNotSubmitted = players.filter(p => !p.promptSubmitted);
+    
+    // If only 1 player left and timer is above LAST_PLAYER_TIMER, drop it
+    if (playersNotSubmitted.length === 1 && timeLeft > LAST_PLAYER_TIMER) {
+      setTimeLeft(LAST_PLAYER_TIMER);
+      if (Platform.OS !== 'web') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+    }
+  }, [players, submitted, timeLeft]);
 
   // Timer countdown
   useEffect(() => {
