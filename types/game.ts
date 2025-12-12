@@ -27,6 +27,7 @@ export interface Room {
   promptSubmissionPhase?: boolean;
   gameFinished?: boolean;
   revealed?: boolean;
+  promptCount?: number;
 }
 
 export interface GameContextType {
@@ -61,6 +62,7 @@ export interface GroupContextType {
   revealed: boolean;
   myPlayerId: string;
   sessionEndedReason: string | null;
+  promptCount: number;
   createRoom(category: Category): Promise<string>;
   joinRoom(code: string, playerName: string): Promise<void>;
   startGame(): Promise<void>;
@@ -75,4 +77,5 @@ export interface GroupContextType {
   finishGame(): Promise<void>;
   updatePlayerName(newName: string): Promise<void>;
   revealCard(): Promise<void>;
+  setPromptCount(count: number): Promise<void>;
 }
