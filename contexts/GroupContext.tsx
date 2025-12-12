@@ -32,6 +32,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   const [gameFinished, setGameFinished] = useState<boolean>(false);
   const [revealed, setRevealed] = useState<boolean>(false);
   const [sessionEndedReason, setSessionEndedReason] = useState<string | null>(null);
+  const [promptCount, setPromptCountState] = useState<number>(10); // Default to 10 cards
 
   // Subscribe to room updates
   useEffect(() => {
@@ -63,6 +64,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
             prompt_submission_phase: boolean;
             game_finished: boolean;
             revealed: boolean;
+            prompt_count: number;
           };
           
           setPlayers(room.players || []);
@@ -72,6 +74,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
           setPromptSubmissionPhase(room.prompt_submission_phase || false);
           setGameFinished(room.game_finished || false);
           setRevealed(room.revealed || false);
+          if (room.prompt_count) setPromptCountState(room.prompt_count);
           
           if (room.category) setCategory(room.category);
           if (room.prompts) setPrompts(room.prompts);
@@ -199,7 +202,20 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         updates.prompt_submission_phase = true;
         updates.active_player_id = null; // clear any stale turn from previous category
       } else {
-        // For other modes, set random first player
+        // For preset categories, shuffle and limit prompts based on promptCount
+        if (room.category !== Category.BuildYourOwn) {
+          const allPrompts = [...(room.prompts as string[])];
+          // Shuffle the prompts
+          for (let i = allPrompts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allPrompts[i], allPrompts[j]] = [allPrompts[j], allPrompts[i]];
+          }
+          // Limit to the selected prompt count
+          const selectedCount = room.prompt_count || promptCount || 10;
+          updates.prompts = allPrompts.slice(0, Math.min(selectedCount, allPrompts.length));
+        }
+        
+        // Set random first player
         const randomIndex = Math.floor(Math.random() * (room.players as Player[]).length);
         updates.active_player_id = (room.players as Player[])[randomIndex].id;
       }
@@ -212,6 +228,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       setStarted(true);
+      if (updates.prompts) setPrompts(updates.prompts);
       if (updates.active_player_id !== undefined) setActivePlayerId(updates.active_player_id);
       if (updates.prompt_submission_phase) setPromptSubmissionPhase(true);
     } catch (error) {
@@ -275,6 +292,23 @@ export function GroupProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
     } catch (error) {
       console.error('Error toggling reveal state:', error);
+      throw error;
+    }
+  };
+
+  const setPromptCount = async (count: number): Promise<void> => {
+    if (!isHost || !roomId) return;
+
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ prompt_count: count })
+        .eq('id', roomId);
+
+      if (error) throw error;
+      setPromptCountState(count);
+    } catch (error) {
+      console.error('Error setting prompt count:', error);
       throw error;
     }
   };
@@ -345,6 +379,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     setGameFinished(false);
     setRevealed(false);
     setSessionEndedReason(reason ?? null);
+    setPromptCountState(10); // Reset to default
   };
 
   const submitPrompt = async (prompt: string): Promise<void> => {
@@ -567,6 +602,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         revealed,
         myPlayerId,
         sessionEndedReason,
+        promptCount,
         createRoom,
         joinRoom,
         startGame,
@@ -581,6 +617,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         finishGame,
         updatePlayerName,
         revealCard,
+        setPromptCount,
       }}
     >
       {children}

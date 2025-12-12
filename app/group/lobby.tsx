@@ -14,12 +14,18 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useGroup } from '../../contexts/GroupContext';
+import { Category } from '../../types/game';
 import * as Haptics from 'expo-haptics';
+
+const CARD_COUNT_OPTIONS = [10, 15, 20, 25, 30];
 
 export default function LobbyScreen() {
   const router = useRouter();
-  const { roomId, players, isHost, started, startGame, leaveRoom, promptSubmissionPhase, myPlayerId, updatePlayerName, sessionEndedReason } = useGroup();
+  const { roomId, players, isHost, started, startGame, leaveRoom, promptSubmissionPhase, myPlayerId, updatePlayerName, sessionEndedReason, category, promptCount, setPromptCount } = useGroup();
   const [roomEnded, setRoomEnded] = useState(false);
+  
+  // Check if this is a preset category (not Build Your Own)
+  const isPresetCategory = category && category !== Category.BuildYourOwn;
 
   useEffect(() => {
     if (started) {
@@ -117,6 +123,17 @@ export default function LobbyScreen() {
     );
   };
 
+  const handleCardCountSelect = async (count: number) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    try {
+      await setPromptCount(count);
+    } catch (error) {
+      console.error('Error setting card count:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -179,6 +196,35 @@ export default function LobbyScreen() {
             ))}
           </View>
         </View>
+
+        {/* Card Count Selector (Host Only, Preset Categories Only) */}
+        {isHost && isPresetCategory && (
+          <View style={styles.cardCountContainer}>
+            <Text style={styles.cardCountTitle}>Number of Cards</Text>
+            <View style={styles.cardCountOptions}>
+              {CARD_COUNT_OPTIONS.map((count) => (
+                <TouchableOpacity
+                  key={count}
+                  style={[
+                    styles.cardCountButton,
+                    promptCount === count && styles.cardCountButtonActive,
+                  ]}
+                  onPress={() => handleCardCountSelect(count)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.cardCountButtonText,
+                      promptCount === count && styles.cardCountButtonTextActive,
+                    ]}
+                  >
+                    {count}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Start Button (Host Only) */}
         {isHost && (
@@ -326,6 +372,44 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 18,
+  },
+  cardCountContainer: {
+    marginBottom: 24,
+  },
+  cardCountTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  cardCountOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  cardCountButton: {
+    backgroundColor: '#1F2937',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    minWidth: 60,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#1F2937',
+  },
+  cardCountButtonActive: {
+    borderColor: '#EC4899',
+    backgroundColor: '#2D1F2F',
+  },
+  cardCountButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  cardCountButtonTextActive: {
+    color: '#EC4899',
   },
   button: {
     width: '100%',
