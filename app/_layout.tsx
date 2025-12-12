@@ -25,7 +25,6 @@ export default function RootLayout() {
           <Stack.Screen name="group/lobby" />
           <Stack.Screen name="group/submit-prompt" />
           <Stack.Screen name="group/group-game" />
-          <Stack.Screen name="group/vote" />
           <Stack.Screen name="group/group-end" />
         </Stack>
       </GroupProvider>
